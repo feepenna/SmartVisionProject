@@ -1,0 +1,51 @@
+schema: spec-driven
+
+context: |
+  Project: Smart Vision — Sistema de Gerenciamento de Estoque para Óticas.
+
+  Domain: Controle completo do ciclo de produtos ópticos (armações, lentes oftálmicas,
+  lentes de contato, acessórios e limpeza), entradas de mercadoria, saídas (venda, montagem,
+  perda), alertas de reposição/estoque mínimo e inventário físico com conciliação.
+
+  Tech stack:
+    Frontend: Streamlit é a tecnologia obrigatória e exclusiva para implementação
+    das interfaces frontend do projeto. Não introduzir outra tecnologia de frontend
+    sem uma mudança explícita da decisão arquitetural.
+    Backend: Python / APIs integradas e Xano (XanoScript sincronizado via Xano CLI na pasta xano/).
+    Banco de dados: SQL Server (T-SQL).
+
+  Architecture:
+    Backend é responsável pelas regras de negócio, integridade e persistência.
+    Frontend Streamlit é camada de interação (UX) e não deve ser considerado mecanismo de segurança.
+    Toda movimentação de estoque exige transação atômica e registro de auditoria imutável
+    antes de atualizar saldos. Saldo de produto nunca pode ficar negativo sem justificativa formal.
+
+  Security:
+    Permissões validadas no backend baseadas em perfis (Gestor, Estoquista, Vendedor, Técnico).
+    Nunca armazenar senhas, credenciais ou tokens em código versionado.
+
+  Development:
+    O projeto será desenvolvido incrementalmente utilizando OpenSpec.
+    Mudanças relevantes devem ser especificadas e aprovadas antes da implementação.
+
+  Language:
+    pt-BR. Escrever a documentação do projeto e os artefatos OpenSpec em português brasileiro.
+    Manter palavras-chave estruturais do OpenSpec (SHALL/MUST/heading) no padrão quando necessário.
+
+rules:
+  proposal:
+    - Descrever claramente o problema, objetivo e escopo da alteração.
+    - Identificar explicitamente o que está fora do escopo (Non-goals).
+  specs:
+    - Escrever requisitos verificáveis com cenários claros de comportamento.
+  tasks:
+    - Dividir a implementação em tarefas pequenas, atômicas e verificáveis.
+
+operations:
+  apply:
+    guidance:
+      - Executar testes e validações manuais/automatizadas antes de concluir as tarefas.
+      - Garantir que migrações ou alterações de dados acompanhem a alteração de código.
+  archive:
+    guidance:
+      - Confirmar que a implementação corresponde fielmente à especificação e ao domain-model.
