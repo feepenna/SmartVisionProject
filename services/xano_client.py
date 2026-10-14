@@ -22,6 +22,8 @@ if not _BASE_URL:
 
 # Endpoints derived from the OpenSpec definitions.
 _PRODUCTS_ENDPOINT = f"{_BASE_URL}/smart_vision/products"
+_STOCK_ENTRY_ENDPOINT = f"{_BASE_URL}/smart_vision/stock_entry"
+_STOCK_EXIT_ENDPOINT = f"{_BASE_URL}/smart_vision/stock_exit"
 
 
 def _handle_response(response: requests.Response) -> Any:
@@ -59,4 +61,30 @@ def create_product(payload: Dict[str, Any]) -> Dict[str, Any]:
         The created product record as returned by Xano.
     """
     response = requests.post(_PRODUCTS_ENDPOINT, json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def record_stock_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Record a stock entry (addition) with mandatory audit log in Xano.
+
+    Args:
+        payload: Dictionary containing ``product_id``, ``quantity``, ``reason``, and optional ``user_id``.
+
+    Returns:
+        Dictionary containing ``audit`` and ``product`` records.
+    """
+    response = requests.post(_STOCK_ENTRY_ENDPOINT, json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def record_stock_exit(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Record a stock exit (subtraction) with mandatory audit log and negative stock validation in Xano.
+
+    Args:
+        payload: Dictionary containing ``product_id``, ``quantity``, ``reason``, and optional ``user_id``.
+
+    Returns:
+        Dictionary containing ``audit`` and ``product`` records.
+    """
+    response = requests.post(_STOCK_EXIT_ENDPOINT, json=payload, timeout=10)
     return _handle_response(response)
