@@ -10,10 +10,15 @@ query stock_exit verb=POST {
   }
 
   stack {
-    // 1. Validar quantidade positiva
+    // 1. Validar quantidade positiva e motivo obrigatório
     precondition ($input.quantity > 0) {
       error_type = "inputerror"
       error = "A quantidade de saída deve ser maior que zero."
+    }
+
+    precondition ($input.reason != null && $input.reason != "") {
+      error_type = "inputerror"
+      error = "O motivo da movimentação é obrigatório."
     }
 
     // 2. Buscar o produto
