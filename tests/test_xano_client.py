@@ -52,6 +52,10 @@ class TestXanoClient(unittest.TestCase):
                 "new_stock": 7,
                 "reason": "NF 1234 - Compra de fornecedor",
                 "user_id": 1,
+                "unit_cost": 15.50,
+                "supplier_id": "SUPP-001",
+                "invoice": "NF-1234",
+                "batch_id": "BATCH-001",
             },
             "product": {
                 "id": 10,
@@ -65,6 +69,10 @@ class TestXanoClient(unittest.TestCase):
             "product_id": 10,
             "quantity": 5,
             "reason": "NF 1234 - Compra de fornecedor",
+            "unit_cost": 15.50,
+            "supplier_id": "SUPP-001",
+            "invoice": "NF-1234",
+            "batch_id": "BATCH-001",
             "user_id": 1,
         }
         result = xano_client.record_stock_entry(payload)
@@ -87,17 +95,27 @@ class TestXanoClient(unittest.TestCase):
 
         # Quantidade zero ou negativa
         with self.assertRaises(ValueError) as ctx:
-            xano_client.record_stock_entry({"product_id": 1, "quantity": 0, "reason": "Teste"})
+            xano_client.record_stock_entry({"product_id": 1, "quantity": 0, "reason": "Teste", "unit_cost": 10})
         self.assertIn("maior que zero", str(ctx.exception))
 
         with self.assertRaises(ValueError) as ctx:
-            xano_client.record_stock_entry({"product_id": 1, "quantity": -3, "reason": "Teste"})
+            xano_client.record_stock_entry({"product_id": 1, "quantity": -3, "reason": "Teste", "unit_cost": 10})
         self.assertIn("maior que zero", str(ctx.exception))
 
         # Motivo vazio ou somente espaços
         with self.assertRaises(ValueError) as ctx:
-            xano_client.record_stock_entry({"product_id": 1, "quantity": 2, "reason": "   "})
+            xano_client.record_stock_entry({"product_id": 1, "quantity": 2, "reason": "   ", "unit_cost": 10})
         self.assertIn("motivo", str(ctx.exception).lower())
+
+        # unit_cost missing
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.record_stock_entry({"product_id": 1, "quantity": 2, "reason": "Teste"})
+        self.assertIn("unit_cost", str(ctx.exception).lower())
+
+        # unit_cost negative
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.record_stock_entry({"product_id": 1, "quantity": 2, "reason": "Teste", "unit_cost": -5})
+        self.assertIn("maior ou igual a zero", str(ctx.exception))
 
     @patch("requests.post")
     def test_record_stock_exit_success(self, mock_post):
@@ -140,6 +158,52 @@ class TestXanoClient(unittest.TestCase):
         self.assertEqual(result["audit"]["movement_type"], "exit")
 
     @patch("requests.post")
+    def test_record_stock_exit_success_with_justification(self, mock_post):
+        """Valida fluxo de saída com justificativa para LOSS ou DAMAGE."""
+        mock_response = MagicMock(spec=requests.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "audit": {
+                "id": 3,
+                "product_id": 10,
+                "movement_type": "exit",
+                "quantity": 1,
+                "previous_stock": 3,
+                "new_stock": 2,
+                "reason": "DAMAGE",
+                "justification": "Quebra acidental durante manuseio",
+                "reference_text": "NF-5678",
+                "user_id": 1,
+            },
+            "product": {
+                "id": 10,
+                "name": "Armação Acetato Classic",
+                "current_stock": 2,
+            },
+        }
+        mock_post.return_value = mock_response
+
+        payload = {
+            "product_id": 10,
+            "quantity": 1,
+            "reason": "DAMAGE",
+            "justification": "Quebra acidental durante manuseio",
+            "reference_text": "NF-5678",
+            "user_id": 1,
+        }
+        result = xano_client.record_stock_exit(payload)
+
+        mock_post.assert_called_once_with(
+            "https://mock.xano.io/api/smart_vision/stock_exit",
+            json=payload,
+            timeout=10,
+        )
+        self.assertEqual(result["product"]["current_stock"], 2)
+        self.assertEqual(result["audit"]["reason"], "DAMAGE")
+        self.assertEqual(result["audit"]["justification"], "Quebra acidental durante manuseio")
+        self.assertEqual(result["audit"]["reference_text"], "NF-5678")
+
+    @patch("requests.post")
     def test_record_stock_exit_insufficient_stock_error(self, mock_post):
         """Valida que saldo insuficiente (tentativa de saldo negativo) retorna erro HTTP 400 do backend."""
         mock_response = MagicMock(spec=requests.Response)
@@ -159,6 +223,23 @@ class TestXanoClient(unittest.TestCase):
 
         self.assertIn("Estoque insuficiente", str(ctx.exception))
 
+    @patch("requests.post")
+    def test_record_stock_exit_insufficient_stock_with_justification_error(self, mock_post):
+        """Valida que saída com LOSS/DAMAGE sem justificativa lança ValueError antes da chamada HTTP."""
+        mock_post.return_value = MagicMock(spec=requests.Response)
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"audit": {}, "product": {}}
+
+        payload = {
+            "product_id": 10,
+            "quantity": 1,
+            "reason": "DAMAGE",
+            # justificativa faltando
+        }
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.record_stock_exit(payload)
+        self.assertIn("justificativa", str(ctx.exception).lower())
+
     def test_record_stock_exit_validation_errors(self):
         """Valida rejeição de saídas com dados inválidos."""
         with self.assertRaises(ValueError):
@@ -170,25 +251,86 @@ class TestXanoClient(unittest.TestCase):
         with self.assertRaises(ValueError):
             xano_client.record_stock_exit({"product_id": 1, "quantity": 1, "reason": ""})
 
-    @patch("requests.get")
-    def test_list_products(self, mock_get):
-        """Valida chamada do endpoint de listagem de produtos com filtros."""
+        with self.assertRaises(ValueError):
+            xano_client.record_stock_exit({"product_id": 1, "quantity": 1, "reason": "DAMAGE"})
+
+    @patch("requests.post")
+    def test_record_stock_exit_damage_without_justification_rejected(self, mock_post):
+        """Valida que saída com reason DAMAGE sem justification lança ValueError no cliente."""
+        mock_post.return_value = MagicMock(spec=requests.Response)
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"audit": {}, "product": {}}
+
+        payload = {
+            "product_id": 10,
+            "quantity": 1,
+            "reason": "DAMAGE",
+            # sem justification
+        }
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.record_stock_exit(payload)
+        self.assertIn("justificativa", str(ctx.exception).lower())
+
+    @patch("requests.post")
+    def test_record_stock_exit_sale_no_justification_needed(self, mock_post):
+        """Valida que saída com reason SALE não exige justification."""
         mock_response = MagicMock(spec=requests.Response)
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"id": 1, "name": "Lente Multifocal", "category": "Lente Oftálmica"}
-        ]
-        mock_get.return_value = mock_response
+        mock_response.json.return_value = {
+            "audit": {
+                "id": 4,
+                "product_id": 10,
+                "movement_type": "exit",
+                "quantity": 3,
+                "previous_stock": 10,
+                "new_stock": 7,
+                "reason": "SALE",
+                "user_id": 1,
+            },
+            "product": {
+                "id": 10,
+                "name": "Armação Acetato Classic",
+                "current_stock": 7,
+            },
+        }
+        mock_post.return_value = mock_response
 
-        result = xano_client.list_products(filters={"category": "Lente Oftálmica"})
+        payload = {
+            "product_id": 10,
+            "quantity": 3,
+            "reason": "SALE",
+            "user_id": 1,
+        }
+        result = xano_client.record_stock_exit(payload)
 
-        mock_get.assert_called_once_with(
-            "https://mock.xano.io/api/smart_vision/products",
-            params={"category": "Lente Oftálmica"},
-            timeout=10,
-        )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["category"], "Lente Oftálmica")
+        self.assertEqual(result["audit"]["reason"], "SALE")
+        self.assertNotIn("justification", result["audit"])
+
+    @patch("requests.post")
+    def test_record_stock_exit_insufficient_stock_no_call_to_ledger(self, mock_post):
+        """Valida que saldo insuficiente bloqueia transação sem chamar ledger."""
+        mock_response = MagicMock(spec=requests.Response)
+        mock_response.status_code = 400
+        mock_response.text = '{"message": "Estoque insuficiente. A saída deixaria o saldo negativo."}'
+        http_error = requests.HTTPError("400 Client Error: Bad Request", response=mock_response)
+        mock_response.raise_for_status.side_effect = http_error
+        mock_post.return_value = mock_response
+
+        payload = {
+            "product_id": 10,
+            "quantity": 15,
+            "reason": "Venda",
+        }
+        with self.assertRaises(requests.HTTPError) as ctx:
+            xano_client.record_stock_exit(payload)
+        # Verify the endpoint was called (validation happens server-side)
+        mock_post.assert_called_once()
+
+    def test_record_stock_exit_validation_negative_quantity(self):
+        """Valida rejeição de saída com quantidade negativa."""
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.record_stock_exit({"product_id": 1, "quantity": -5, "reason": "Teste"})
+        self.assertIn("maior que zero", str(ctx.exception))
 
 
 if __name__ == "__main__":

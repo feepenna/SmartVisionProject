@@ -78,7 +78,8 @@ def record_stock_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Record a stock entry (addition) with mandatory audit log in Xano.
 
     Args:
-        payload: Dictionary containing ``product_id``, ``quantity``, ``reason``, and optional ``user_id``.
+        payload: Dictionary containing ``product_id``, ``quantity``, ``reason``,
+                 ``unit_cost``, and optional ``supplier_id``, ``invoice``, ``batch_id``, ``user_id``.
 
     Returns:
         Dictionary containing ``audit`` and ``product`` records.
@@ -91,6 +92,12 @@ def record_stock_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
     reason = payload.get("reason")
     if not reason or not str(reason).strip():
         raise ValueError("O motivo da movimentação é obrigatório.")
+    # Validate unit_cost
+    unit_cost = payload.get("unit_cost")
+    if unit_cost is None:
+        raise ValueError("O campo unit_cost é obrigatório.")
+    if not isinstance(unit_cost, (int, float)) or unit_cost < 0:
+        raise ValueError("O unit_cost deve ser um número maior ou igual a zero.")
 
     response = requests.post(_get_stock_entry_endpoint(), json=payload, timeout=10)
     return _handle_response(response)
@@ -100,7 +107,9 @@ def record_stock_exit(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Record a stock exit (subtraction) with mandatory audit log and negative stock validation in Xano.
 
     Args:
-        payload: Dictionary containing ``product_id``, ``quantity``, ``reason``, and optional ``user_id``.
+        payload: Dictionary containing ``product_id``, ``quantity``, ``reason``,
+                 ``justification`` (required for LOSS/DAMAGE), and optional ``reference_text``,
+                 ``user_id``.
 
     Returns:
         Dictionary containing ``audit`` and ``product`` records.
@@ -113,6 +122,11 @@ def record_stock_exit(payload: Dict[str, Any]) -> Dict[str, Any]:
     reason = payload.get("reason")
     if not reason or not str(reason).strip():
         raise ValueError("O motivo da movimentação é obrigatório.")
+    # Validate justification for LOSS or DAMAGE
+    if reason in ["LOSS", "DAMAGE"]:
+        justification = payload.get("justification")
+        if not justification or not str(justification).strip():
+            raise ValueError("A justificativa é obrigatória quando o motivo é LOSS ou DAMAGE.")
 
     response = requests.post(_get_stock_exit_endpoint(), json=payload, timeout=10)
     return _handle_response(response)

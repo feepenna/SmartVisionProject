@@ -1005,7 +1005,7 @@ elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
         if st.button("Confirmar Entrada Auditada", type="primary", key="btn_ent"):
             try:
                 if xano_client:
-                    res = xano_client.record_stock_entry({"product_id": p_id, "quantity": qty, "reason": reason, "user_id": 1})
+                    res = xano_client.record_stock_entry({"product_id": p_id, "quantity": qty, "reason": reason, "unit_cost": 0, "user_id": 1})
                     st.success(f"✅ Entrada registrada e auditada com sucesso! Novo saldo: {res.get('product', {}).get('current_stock', 'N/A')}")
                 else:
                     st.warning("Serviço Xano não configurado ou offline. Operação simulada localmente com sucesso.")

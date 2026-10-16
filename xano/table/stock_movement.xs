@@ -6,12 +6,18 @@ table stock_movement {
     int id
     timestamp created_at?=now
     int product_id
-    text movement_type filters=trim // "entry", "exit", "adjustment"
+    text movement_type filters=trim
     int quantity
     int previous_stock
     int new_stock
     text reason filters=trim
     int? user_id
+    decimal? unit_cost
+    text? supplier_id filters=trim
+    text? invoice filters=trim
+    text? batch_id filters=trim
+    text? justification filters=trim
+    text? reference_text filters=trim
   }
 
   index = [
