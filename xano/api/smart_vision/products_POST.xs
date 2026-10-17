@@ -6,22 +6,22 @@ query products verb=POST {
     text sku filters=trim
     text name filters=trim
     text category filters=trim
-    text? brand filters=trim
-    text? model filters=trim
-    decimal? cost_price
+    text brand? filters=trim
+    text model? filters=trim
+    decimal cost_price?
     decimal sale_price
     int min_stock
-    text? location filters=trim
+    text location? filters=trim
   
     // Atributos ópticos (lentes)
-    decimal? sphere_power
+    decimal sphere_power?
   
-    decimal? cylinder_power
-    int? axis
-    decimal? addition
-    text? lens_type filters=trim
-    text? treatment filters=trim
-    text? material filters=trim
+    decimal cylinder_power?
+    int axis?
+    decimal addition?
+    text lens_type? filters=trim
+    text treatment? filters=trim
+    text material? filters=trim
   }
 
   stack {

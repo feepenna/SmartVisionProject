@@ -10,6 +10,19 @@ import os
 from datetime import datetime, date, timedelta
 import streamlit as st
 
+# Carregar variáveis de ambiente do .env se existir
+_env_file = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(_env_file):
+    try:
+        with open(_env_file, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    os.environ.setdefault(_k.strip(), _v.strip())
+    except Exception:
+        pass
+
 # Tentativa de importação do serviço Xano para o módulo de estoque
 try:
     from services import xano_client

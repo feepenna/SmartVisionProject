@@ -3,8 +3,8 @@ query products verb=GET {
   api_group = "Smart Vision"
 
   input {
-    text? category filters=trim
-    text? search filters=trim
+    text category? filters=trim
+    text search? filters=trim
   }
 
   stack {

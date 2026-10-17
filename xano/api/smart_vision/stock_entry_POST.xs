@@ -6,11 +6,11 @@ query stock_entry verb=POST {
     int product_id
     int quantity
     decimal unit_cost
-    text? supplier_id filters=trim
-    text? invoice filters=trim
-    text? batch_id filters=trim
+    text supplier_id? filters=trim
+    text invoice? filters=trim
+    text batch_id? filters=trim
     text reason filters=trim
-    int? user_id
+    int user_id?
   }
 
   stack {

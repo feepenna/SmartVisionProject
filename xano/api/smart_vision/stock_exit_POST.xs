@@ -6,9 +6,9 @@ query stock_exit verb=POST {
     int product_id
     int quantity
     text reason filters=trim
-    text? justification filters=trim
-    text? reference_text filters=trim
-    int? user_id
+    text justification? filters=trim
+    text reference_text? filters=trim
+    int user_id?
   }
 
   stack {

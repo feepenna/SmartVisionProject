@@ -24,16 +24,25 @@ def get_base_url() -> str:
     return base_url.rstrip("/")
 
 
+def _format_endpoint(path: str) -> str:
+    """Resolve endpoint URL supporting both standard and canonical group paths."""
+    base = get_base_url()
+    clean_path = path.lstrip("/")
+    if ":SzoTJegm" in base or ":smart_vision" in base or base.endswith("/smart_vision"):
+        return f"{base}/{clean_path}"
+    return f"{base}/smart_vision/{clean_path}"
+
+
 def _get_products_endpoint() -> str:
-    return f"{get_base_url()}/smart_vision/products"
+    return _format_endpoint("products")
 
 
 def _get_stock_entry_endpoint() -> str:
-    return f"{get_base_url()}/smart_vision/stock_entry"
+    return _format_endpoint("stock_entry")
 
 
 def _get_stock_exit_endpoint() -> str:
-    return f"{get_base_url()}/smart_vision/stock_exit"
+    return _format_endpoint("stock_exit")
 
 
 def _handle_response(response: requests.Response) -> Any:
