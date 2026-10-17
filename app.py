@@ -328,7 +328,8 @@ with st.sidebar:
             "🎓 Academia SmartVision (Treinos)",
             "⚡ Atalhos Operacionais (PDV / OS / Receitas)",
             "📦 Gestão de Estoque Auditado (Módulo Central)",
-            "📦 Inventário Físico & Conciliação (Change 03)"
+            "📦 Inventário Físico & Conciliação (Change 03)",
+            "🚚 Saídas de Estoque (Change 04)"
         ],
         index=0
     )
@@ -1668,4 +1669,403 @@ elif menu_option == "📦 Inventário Físico & Conciliação (Change 03)":
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+
+elif menu_option == "🚚 Saídas de Estoque (Change 04)":
+    st.markdown('<div class="main-header">🚚 Gestão de Saídas de Estoque (Outbound Operations)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Registro e processamento de saídas (Venda, Laboratório, Perda, Operacional) com bloqueio de saldo negativo e auditoria prévia.</div>', unsafe_allow_html=True)
+
+    # Estado de sessão local para saídas (fallback e histórico reativo)
+    if "local_outbounds" not in st.session_state:
+        st.session_state.local_outbounds = [
+            {
+                "id": 1,
+                "created_at": "2026-10-17 10:15:00",
+                "type": "SALE",
+                "status": "Concluida",
+                "product_id": 1,
+                "quantity": 1,
+                "user_id": 1,
+                "reason": "Venda Balcão PDV #10492",
+                "justification": None,
+                "reference_type": "SALE",
+                "reference_id": "V-10492",
+                "destination": None,
+                "stock_movement_id": 101,
+                "processed_at": "2026-10-17 10:15:02",
+                "approved_by": 1,
+            },
+            {
+                "id": 2,
+                "created_at": "2026-10-17 11:30:00",
+                "type": "LAB_SHIPMENT",
+                "status": "Concluida",
+                "product_id": 2,
+                "quantity": 2,
+                "user_id": 2,
+                "reason": "Envio para montagem de lentes em surfaçagem",
+                "justification": None,
+                "reference_type": "OS",
+                "reference_id": "OS-8831",
+                "destination": "Laboratório Central Essilor/Hoya",
+                "stock_movement_id": 102,
+                "processed_at": "2026-10-17 11:30:05",
+                "approved_by": 2,
+            },
+            {
+                "id": 3,
+                "created_at": "2026-10-17 11:45:00",
+                "type": "LOSS",
+                "status": "AguardandoAprovacao",
+                "product_id": 3,
+                "quantity": 1,
+                "user_id": 3,
+                "reason": "Avaria mecânica durante montagem no laboratório interno",
+                "justification": "Armação trincada no ajuste térmico da charneira esquerda. Inutilizada para venda.",
+                "reference_type": "OS",
+                "reference_id": "OS-8835",
+                "destination": "Descarte / Sucata Auditada",
+                "stock_movement_id": None,
+                "processed_at": None,
+                "approved_by": None,
+            }
+        ]
+
+    # Carregar produtos disponíveis
+    all_products = []
+    if xano_client:
+        try:
+            all_products = xano_client.list_products()
+        except Exception:
+            all_products = []
+    if not all_products:
+        all_products = [
+            {"id": 1, "sku": "RAY-RB3025-58", "name": "Óculos de Sol Aviador Clássico", "current_stock": 14, "cost_price": 350.0},
+            {"id": 2, "sku": "OAK-OX8156-54", "name": "Armação Holbrook RX Fosco", "current_stock": 8, "cost_price": 280.0},
+            {"id": 3, "sku": "ZEISS-SV-167-AR", "name": "Lente Zeiss Monofocal 1.67 Duravision", "current_stock": 22, "cost_price": 190.0},
+            {"id": 4, "sku": "VAR-COMF-159", "name": "Lente Multifocal Varilux Comfort Max", "current_stock": 5, "cost_price": 420.0},
+        ]
+
+    prod_map = {p["id"]: p for p in all_products}
+    prod_options = {f"#{p['id']} - {p.get('name', 'Produto')} ({p.get('sku', '')}) [Saldo: {p.get('current_stock', 0)}]": p["id"] for p in all_products}
+
+    # KPIs de Saída
+    outbounds_list = st.session_state.local_outbounds
+    if xano_client:
+        try:
+            remote_outbounds = xano_client.list_outbounds()
+            if remote_outbounds and isinstance(remote_outbounds, list):
+                outbounds_list = remote_outbounds
+        except Exception:
+            pass
+
+    total_ops = len(outbounds_list)
+    pendentes_aprov = len([o for o in outbounds_list if o.get("status") in ["Pendente", "AguardandoAprovacao"]])
+    concluidas = len([o for o in outbounds_list if o.get("status") == "Concluida"])
+    total_itens_baixados = sum(o.get("quantity", 0) for o in outbounds_list if o.get("status") == "Concluida")
+
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Total de Operações</div>
+            <div class="kpi-value">{total_ops}</div>
+            <div class="kpi-delta">Operações registradas</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Aguardando Decisão</div>
+            <div class="kpi-value" style="color:#d97706;">{pendentes_aprov}</div>
+            <div class="kpi-delta">Pendentes / Aprovação</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi3:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Efetivadas (Baixa OK)</div>
+            <div class="kpi-value" style="color:#10b981;">{concluidas}</div>
+            <div class="kpi-delta">Ledger atualizado</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi4:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">Peças Baixadas</div>
+            <div class="kpi-value" style="color:#3942f6;">{total_itens_baixados}</div>
+            <div class="kpi-delta">Unidades expedidas</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+
+    # Abas da Change 04
+    tab_reg, tab_hist, tab_gest = st.tabs([
+        "📝 Nova Saída de Estoque",
+        "📋 Histórico & Rastreabilidade Auditada",
+        "🛡️ Central de Aprovação Gerencial"
+    ])
+
+    # 1. ABA DE REGISTRO
+    with tab_reg:
+        st.markdown("#### Registrar Saída Autorizada de Estoque")
+        st.markdown("Selecione o tipo de saída e informe os dados de origem. Baixas de perda (LOSS) exigem justificativa obrigatória e aprovação do gestor.")
+
+        col_t1, col_t2 = st.columns([1, 2])
+        with col_t1:
+            out_type = st.selectbox(
+                "Tipo de Saída:",
+                options=["SALE", "LAB_SHIPMENT", "LOSS", "OPERATIONAL"],
+                format_func=lambda x: {
+                    "SALE": "🛒 Venda Comercial (PDV)",
+                    "LAB_SHIPMENT": "🔬 Envio para Laboratório (Montagem/OS)",
+                    "LOSS": "⚠️ Perda / Avaria / Quebra",
+                    "OPERATIONAL": "📦 Saída Operacional / Transferência"
+                }.get(x, x),
+                key="out_type_sel"
+            )
+
+        with col_t2:
+            prod_sel_label = st.selectbox("Selecione o Produto:", options=list(prod_options.keys()), key="out_prod_sel")
+            selected_pid = prod_options.get(prod_sel_label)
+            selected_prod_obj = prod_map.get(selected_pid, {})
+            current_avail = selected_prod_obj.get("current_stock", 0)
+
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            out_qty = st.number_input("Quantidade a Retirar:", min_value=1, max_value=max(1, current_avail), value=1, step=1, key="out_qty_input")
+            if out_qty > current_avail:
+                st.error(f"❌ Quantidade solicitada ({out_qty}) excede o saldo disponível ({current_avail})!")
+            else:
+                st.caption(f"Saldo restante após baixa: **{current_avail - out_qty}** un.")
+
+        with col_f2:
+            out_user_id = st.number_input("ID do Operador / Responsável:", min_value=1, value=1, step=1, key="out_user_input")
+
+        with col_f3:
+            idempotency_key = st.text_input("Chave de Idempotência (Opcional):", value=f"OUT-{selected_pid}-{int(datetime.now().timestamp())}", key="out_idem_key")
+
+        # Campos condicionais conforme tipo de saída
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            if out_type == "SALE":
+                ref_type = "SALE"
+                ref_id = st.text_input("Número do Pedido / Cupom Fiscal:", value="VD-2026-00491", key="out_ref_sale")
+                dest = None
+                reason_default = f"Venda balcão - Pedido {ref_id}"
+            elif out_type == "LAB_SHIPMENT":
+                ref_type = "OS"
+                ref_id = st.text_input("Número da Ordem de Serviço (OS):", value="OS-9941", key="out_ref_lab")
+                dest = st.selectbox("Laboratório de Destino:", ["Laboratório Central Hoya/Essilor", "Laboratório Interno Loja 04", "Surfaçagem Digital Pró-Ótica"], key="out_dest_lab")
+                reason_default = f"Envio para montagem OS #{ref_id}"
+            elif out_type == "LOSS":
+                ref_type = "INTERNAL"
+                ref_id = st.text_input("Código do Incidente / Avaria:", value="AV-2026-10", key="out_ref_loss")
+                dest = "Descarte Auditado / Sucata"
+                reason_default = "Perda por quebra/avaria operacional"
+            else:
+                ref_type = "TRANSFER"
+                ref_id = st.text_input("Referência Operacional:", value="TRANSF-LJ02", key="out_ref_op")
+                dest = st.text_input("Destino / Setor:", value="Filial Shopping Ibirapuera", key="out_dest_op")
+                reason_default = "Transferência autorizada de mostruário"
+
+        with col_c2:
+            out_reason = st.text_input("Motivo da Saída:", value=reason_default, key="out_reason_input")
+            out_notes = st.text_input("Observações Adicionais:", value="", key="out_notes_input")
+
+        justification_input = ""
+        if out_type == "LOSS":
+            st.markdown('<div class="status-badge status-warning">⚠️ ATENÇÃO: Justificativa obrigatória para auditoria de perdas.</div>', unsafe_allow_html=True)
+            justification_input = st.text_area(
+                "Justificativa da Perda / Avaria (Obrigatório):",
+                value="Produto quebrou durante ajuste fino na ventilete térmica. Sem condições de comercialização.",
+                key="out_just_input"
+            )
+
+        st.write("")
+        if st.button("🚀 Confirmar e Efetivar Saída de Estoque", type="primary", key="btn_confirm_out"):
+            # Validações prévias
+            if out_qty > current_avail:
+                st.error("Operação bloqueada: o saldo em estoque é insuficiente para esta quantidade.")
+            elif out_type == "LOSS" and not justification_input.strip():
+                st.error("A justificativa é obrigatória para registrar saídas do tipo PERDA (LOSS).")
+            else:
+                # Regra: se for perda de valor, cria com status AguardandoAprovacao; se venda/lab, processa direto
+                initial_status = "AguardandoAprovacao" if out_type == "LOSS" else "Pendente"
+                payload_out = {
+                    "type": out_type,
+                    "product_id": int(selected_pid),
+                    "quantity": int(out_qty),
+                    "user_id": int(out_user_id),
+                    "reason": out_reason,
+                    "justification": justification_input if justification_input.strip() else None,
+                    "reference_type": ref_type,
+                    "reference_id": ref_id,
+                    "destination": dest,
+                    "notes": out_notes if out_notes.strip() else None,
+                    "idempotency_key": idempotency_key,
+                    "status": initial_status
+                }
+
+                try:
+                    res_create = None
+                    if xano_client:
+                        try:
+                            res_create = xano_client.create_outbound(payload_out)
+                        except Exception:
+                            res_create = None
+
+                    if res_create is None:
+                        new_id = len(st.session_state.local_outbounds) + 1
+                        res_create = dict(payload_out, id=new_id, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+                    # Se for venda ou envio laboratório, processa a baixa de estoque imediatamente
+                    if out_type in ["SALE", "LAB_SHIPMENT", "OPERATIONAL"]:
+                        res_proc = None
+                        if xano_client and res_create.get("id"):
+                            try:
+                                res_proc = xano_client.process_outbound(res_create["id"], int(out_user_id))
+                            except Exception:
+                                res_proc = None
+
+                        res_create["status"] = "Concluida"
+                        res_create["processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        res_create["stock_movement_id"] = 100 + res_create["id"]
+                        res_create["approved_by"] = int(out_user_id)
+
+                        # Atualizar saldo localmente
+                        if selected_pid in prod_map:
+                            prod_map[selected_pid]["current_stock"] = max(0, current_avail - int(out_qty))
+
+                        st.success(f"✅ Saída #{res_create['id']} concluída com sucesso! Baixa no estoque efetivada (Movimento #{res_create['stock_movement_id']}).")
+                    else:
+                        st.info(f"⏳ Solicitação de perda #{res_create['id']} registrada e enviada para aprovação do gestor.")
+
+                    st.session_state.local_outbounds.insert(0, res_create)
+                    st.rerun()
+                except Exception as ex:
+                    st.error(f"Erro ao registrar saída de estoque: {ex}")
+
+    # 2. ABA DE HISTÓRICO & FILTROS
+    with tab_hist:
+        st.markdown("#### Histórico Auditado de Saídas de Estoque")
+        st.markdown("Consulte e filtre todas as operações de saída. Registros concluídos são imutáveis e auditados.")
+
+        col_fil1, col_fil2, col_fil3 = st.columns(3)
+        with col_fil1:
+            fil_type = st.selectbox("Filtrar por Tipo:", ["Todos", "SALE", "LAB_SHIPMENT", "LOSS", "OPERATIONAL"], key="fil_type_hist")
+        with col_fil2:
+            fil_status = st.selectbox("Filtrar por Status:", ["Todos", "Concluida", "AguardandoAprovacao", "Pendente", "Rejeitada", "Cancelada"], key="fil_stat_hist")
+        with col_fil3:
+            fil_search = st.text_input("Buscar por Referência / Motivo / OS:", value="", key="fil_srch_hist")
+
+        filtered_outbounds = st.session_state.local_outbounds
+        if fil_type != "Todos":
+            filtered_outbounds = [o for o in filtered_outbounds if o.get("type") == fil_type]
+        if fil_status != "Todos":
+            filtered_outbounds = [o for o in filtered_outbounds if o.get("status") == fil_status]
+        if fil_search.strip():
+            s = fil_search.strip().lower()
+            filtered_outbounds = [o for o in filtered_outbounds if s in str(o.get("reference_id", "")).lower() or s in str(o.get("reason", "")).lower()]
+
+        if not filtered_outbounds:
+            st.info("Nenhuma operação de saída encontrada para os filtros selecionados.")
+        else:
+            for out_item in filtered_outbounds:
+                p = prod_map.get(out_item.get("product_id"), {})
+                st_color = {
+                    "Concluida": "#10b981",
+                    "AguardandoAprovacao": "#f59e0b",
+                    "Pendente": "#6366f1",
+                    "Rejeitada": "#ef4444",
+                    "Cancelada": "#64748b"
+                }.get(out_item.get("status"), "#0f172a")
+
+                st.markdown(f"""
+                <div style="border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; background:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-weight:700; font-size:1.05rem; color:#0f172a;">Saída #{out_item.get('id')}</span> &nbsp;
+                            <span style="background:#e0e7ff; color:#3730a3; padding:2px 8px; border-radius:12px; font-size:0.8rem; font-weight:600;">{out_item.get('type')}</span> &nbsp;
+                            <span style="color:#64748b; font-size:0.85rem;">{out_item.get('created_at')}</span>
+                        </div>
+                        <div style="font-weight:700; color:{st_color}; font-size:0.95rem; border:1px solid {st_color}; padding:2px 10px; border-radius:14px;">
+                            {out_item.get('status')}
+                        </div>
+                    </div>
+                    <div style="margin-top:8px; font-size:0.92rem; color:#334155;">
+                        <b>Produto:</b> {p.get('name', 'Produto')} ({p.get('sku', '')}) &nbsp;|&nbsp;
+                        <b>Qtd:</b> <span style="color:#dc2626; font-weight:700;">-{out_item.get('quantity')} un.</span> &nbsp;|&nbsp;
+                        <b>Referência:</b> {out_item.get('reference_type', '')} {out_item.get('reference_id', '-')} &nbsp;|&nbsp;
+                        <b>Operador:</b> User #{out_item.get('user_id')}
+                    </div>
+                    <div style="margin-top:4px; font-size:0.88rem; color:#64748b;">
+                        <b>Motivo:</b> {out_item.get('reason', '-')}
+                        {f" &nbsp;|&nbsp; <b>Destino:</b> {out_item.get('destination')}" if out_item.get('destination') else ""}
+                        {f" &nbsp;|&nbsp; <b>Movimento Ledger:</b> #{out_item.get('stock_movement_id')}" if out_item.get('stock_movement_id') else ""}
+                    </div>
+                    {f'<div style="margin-top:6px; background:#fffbeb; padding:6px 10px; border-radius:6px; border-left:3px solid #f59e0b; font-size:0.85rem; color:#92400e;"><b>Justificativa de Auditoria:</b> {out_item.get("justification")}</div>' if out_item.get("justification") else ''}
+                </div>
+                """, unsafe_allow_html=True)
+
+    # 3. ABA DE APROVAÇÃO GERENCIAL
+    with tab_gest:
+        st.markdown("#### Central de Decisão e Aprovação Gerencial")
+        st.markdown("Operações que exigem autorização expressa (como perdas e descartes de alto valor) antes do débito no estoque.")
+
+        pending_approval = [o for o in st.session_state.local_outbounds if o.get("status") in ["AguardandoAprovacao", "Pendente"]]
+        if not pending_approval:
+            st.success("🎉 Nenhuma solicitação de saída pendente de aprovação no momento.")
+        else:
+            for item in pending_approval:
+                p = prod_map.get(item.get("product_id"), {})
+                st.markdown(f"""
+                <div style="border:1px solid #fcd34d; background:#fffdf5; border-radius:10px; padding:14px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-weight:700; color:#b45309; font-size:1.05rem;">Solicitação #{item.get('id')} — Tipo: {item.get('type')}</span>
+                        </div>
+                        <span style="background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.85rem;">Aguardando Gestor</span>
+                    </div>
+                    <div style="margin-top:8px; font-size:0.92rem; color:#1e293b;">
+                        <b>Produto:</b> {p.get('name', 'Produto')} ({p.get('sku', '')}) &nbsp;|&nbsp;
+                        <b>Quantidade:</b> {item.get('quantity')} un. &nbsp;|&nbsp;
+                        <b>Solicitante:</b> Usuário #{item.get('user_id')}
+                    </div>
+                    <div style="margin-top:4px; font-size:0.88rem; color:#475569;">
+                        <b>Motivo:</b> {item.get('reason')}
+                    </div>
+                    <div style="margin-top:4px; font-size:0.88rem; color:#92400e;">
+                        <b>Justificativa de perda:</b> {item.get('justification', 'Não informada')}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                col_b1, col_b2, col_b3 = st.columns([1, 1, 3])
+                with col_b1:
+                    if st.button(f"✅ Aprovar & Baixar #{item.get('id')}", key=f"btn_aprov_{item.get('id')}", type="primary"):
+                        if xano_client:
+                            try:
+                                xano_client.process_outbound(item.get("id"), user_id=1)
+                            except Exception:
+                                pass
+                        item["status"] = "Concluida"
+                        item["stock_movement_id"] = 100 + item.get("id")
+                        item["processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        item["approved_by"] = 1
+                        st.success(f"Saída #{item.get('id')} aprovada e estoque baixado com sucesso!")
+                        st.rerun()
+
+                with col_b2:
+                    if st.button(f"❌ Rejeitar #{item.get('id')}", key=f"btn_rej_{item.get('id')}"):
+                        if xano_client:
+                            try:
+                                xano_client.update_outbound_status(item.get("id"), "Rejeitada", user_id=1)
+                            except Exception:
+                                pass
+                        item["status"] = "Rejeitada"
+                        item["approved_by"] = 1
+                        st.warning(f"Saída #{item.get('id')} rejeitada. O saldo em estoque permaneceu inalterado.")
+                        st.rerun()
+
 

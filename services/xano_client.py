@@ -397,3 +397,71 @@ def apply_adjustments(inventory_id: int, user_id: int) -> Dict[str, Any]:
     }
     response = requests.post(_get_inventory_apply_adjustments_endpoint(), json=payload, timeout=10)
     return _handle_response(response)
+
+
+# ---------------------------------------------------------------------------
+# Operações de saída de estoque (Change 04)
+# ---------------------------------------------------------------------------
+
+_OUTBOUND_TYPES = ["SALE", "LAB_SHIPMENT", "LOSS", "OPERATIONAL"]
+_OUTBOUND_STATUSES = ["Pendente", "AguardandoAprovacao", "Concluida", "Rejeitada", "Cancelada", "FalhaNoProcessamento"]
+
+
+def _get_outbound_endpoint() -> str:
+    return _format_endpoint("outbound")
+
+
+def _get_outbound_status_endpoint() -> str:
+    return _format_endpoint("outbound/status")
+
+
+def _get_outbound_process_endpoint() -> str:
+    return _format_endpoint("outbound/process")
+
+
+def create_outbound(payload: Dict[str, Any]) -> Dict[str, Any]:
+    type_op = payload.get("type")
+    if not type_op or str(type_op).strip() not in _OUTBOUND_TYPES:
+        raise ValueError("Tipo de saída inválido. Use: " + ", ".join(_OUTBOUND_TYPES) + ".")
+    for field in ["product_id", "quantity", "user_id", "reason"]:
+        if not payload.get(field):
+            raise ValueError("Campo obrigatório ausente: " + field)
+    if not isinstance(payload.get("quantity"), int) or payload.get("quantity") <= 0:
+        raise ValueError("Quantidade deve ser > 0")
+    if payload.get("type") == "LOSS" and not (payload.get("justification") or "").strip():
+        raise ValueError("Justificativa obrigatória para LOSS")
+    response = requests.post(_get_outbound_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def list_outbounds(filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    params = filters or {}
+    response = requests.get(_get_outbound_endpoint(), params=params, timeout=10)
+    return _handle_response(response)
+
+
+def get_outbound(outbound_id: int) -> Dict[str, Any]:
+    if not outbound_id:
+        raise ValueError("outbound_id é obrigatório")
+    response = requests.get(_get_outbound_endpoint(), params={"id": int(outbound_id)}, timeout=10)
+    return _handle_response(response)
+
+
+def update_outbound_status(outbound_id: int, status: str, user_id: Optional[int] = None) -> Dict[str, Any]:
+    if not outbound_id or not status:
+        raise ValueError("outbound_id e status são obrigatórios")
+    if status not in _OUTBOUND_STATUSES:
+        raise ValueError("Status inválido")
+    payload = {"id": int(outbound_id), "status": status}
+    if user_id:
+        payload["user_id"] = int(user_id)
+    response = requests.patch(_get_outbound_status_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def process_outbound(outbound_id: int, user_id: int) -> Dict[str, Any]:
+    if not outbound_id or not user_id:
+        raise ValueError("outbound_id e user_id são obrigatórios")
+    payload = {"id": int(outbound_id), "user_id": int(user_id)}
+    response = requests.post(_get_outbound_process_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
