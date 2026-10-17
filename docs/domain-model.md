@@ -113,13 +113,51 @@ Este documento apresenta o modelo conceitual consolidado do sistema **Smart Visi
 
 - **Descrição**: Processo periódico de contagem física de itens na loja.
     
-- **Responsabilidade**: Conciliar o estoque real com o sistema e autorizar correções de divergências.
+- **Responsabilidade**: Conciliar o estoque real com o sistema e autorizar correções de divergências por meio de um fluxo controlado.
+
+- **Atributos**: Identificador, data de abertura, responsável, escopo (completo / categoria / localização), filtros de categoria e localização, status, data de abertura e data de encerramento.
+
+- **Estados e transições**: `Aberto` → `EmContagem` → `AguardandoAprovacao` → `Concluido`, com possibilidade de `EmContagem` → `Aberto` e `AguardandoAprovacao` → `EmContagem` (recontagem). Um inventário `Concluido` não pode ser alterado retroativamente.
+
+- **Relacionamentos**: Conduzido por Usuário; gera Contagens Físicas, Divergências de Conciliação, Decisões do Gestor e Movimentações de Ajuste ao ser concluído.
+
+- **Regras**: Não altera o saldo durante a contagem; impede inventários conflitantes sobre o mesmo escopo (salvo regra explícita); somente gestores aprovam/rejeitam divergências; o responsável pela contagem não aprova a própria divergência (separação de funções); ajustes são aplicados por meio da tabela `stock_movement` (movement_type = "adjustment") com auditoria prévia e idempotência.
+
+**Contagem Física (Item de Inventário)**
+
+- **Descrição**: Registro da quantidade física encontrada para um produto dentro de um inventário.
     
-- **Atributos**: Período (Início/Fim), Status, Quantidade no Sistema, Quantidade Contada, Divergência e Justificativa.
-    
-- **Relacionamentos**: Conduzido por Usuário; gera Movimentações de Ajuste ao ser concluído.
-    
-- **Regras**: Atualiza o saldo do sistema para bater com o físico e lança histórico de auditoria.
+- **Responsabilidade**: Capturar o estoque real produto a produto, permitindo salvar o progresso e retomar posteriormente.
+
+- **Atributos**: Inventário associado, produto contado, quantidade física encontrada, usuário responsável, data/hora do registro, indicador de recontagem, vínculo ao registro anterior (para preservar histórico de recontagens) e observações.
+
+- **Relacionamentos**: Pertence a um Inventário e a um Produto; registrado por um Usuário.
+
+- **Regras**: Não cria registros duplicados indevidos para o mesmo produto e inventário (uma nova contagem não-recount atualiza a existente); recontagens criam um novo registro vinculado ao anterior sem sobrescrevê-lo; o saldo de estoque não é alterado durante a contagem.
+
+**Divergência de Conciliação**
+
+- **Descrição**: Resultado da comparação entre a quantidade física contada e o saldo de referência do sistema para um produto.
+
+- **Responsabilidade**: Classificar a divergência e rastrear a decisão do gestor até a aplicação do ajuste.
+
+- **Atributos**: Quantidade física contada, quantidade de referência (preservada), diferença absoluta, classificação (`sem divergência` / `falta de estoque` / `sobra de estoque`), impacto no saldo, situação da análise (pendente / aprovada / rejeitada / recontagem solicitada), usuário e data da decisão, justificativa, indicador de ajuste aplicado e vínculo à movimentação de auditoria.
+
+- **Relacionamentos**: Pertence a um Inventário e a um Produto; vinculada a uma ou mais Decisões e, quando aprovada, a uma Movimentação de Estoque.
+
+- **Regras**: Os valores de referência utilizados na conciliação são preservados para rastreabilidade; uma divergência rejeitada não gera movimentação de ajuste; o ajuste é aplicado uma única vez (idempotência); movimentações concorrentes entre a contagem e a aprovação são tratadas comparando o saldo atual com a referência.
+
+**Decisão de Divergência (Auditoria de Decisões)**
+
+- **Descrição**: Registro de cada decisão tomada por um gestor sobre uma divergência (aprovação, rejeição ou solicitação de recontagem).
+
+- **Responsabilidade**: Preservar o histórico de decisões para rastreabilidade e conformidade.
+
+- **Atributos**: Divergência associada, ação (`approved` / `rejected` / `recount_requested`), usuário gestor, data/hora da decisão, justificativa e status anterior da divergência.
+
+- **Relacionamentos**: Pertence a um Inventário, a um Produto e a uma Divergência; decidido por um Usuário.
+
+- **Regras**: Somente usuários autorizados (perfil Gestor) podem decidir; toda decisão registra usuário, data, ação e justificativa; o histórico não é sobrescrito.
     
 
 **Alerta de Reposição**

@@ -327,7 +327,8 @@ with st.sidebar:
             "📂 Central do Colaborador (RH & Ponto)",
             "🎓 Academia SmartVision (Treinos)",
             "⚡ Atalhos Operacionais (PDV / OS / Receitas)",
-            "📦 Gestão de Estoque Auditado (Módulo Central)"
+            "📦 Gestão de Estoque Auditado (Módulo Central)",
+            "📦 Inventário Físico & Conciliação (Change 03)"
         ],
         index=0
     )
@@ -1001,24 +1002,102 @@ elif menu_option == "⚡ Atalhos Operacionais (PDV / OS / Receitas)":
 
 
 # -----------------------------------------------------------------------------
-# SEÇÃO 7: GESTÃO DE ESTOQUE AUDITADO (MÓDULO CENTRAL DO SMARTVISION)
+# SEÇÃO 7: GESTÃO DE ESTOQUE AUDITADO & REPOSIÇÃO (SMARTVISION CORE)
 # -----------------------------------------------------------------------------
 elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
-    st.subheader("📦 Módulo de Estoque Auditado (AGENTS.md)")
+    st.subheader("📦 Módulo de Estoque Auditado & Reposição (Replenishment)")
     st.info("💡 **Conformidade Crítica**: Todas as entradas e saídas exigem registro prévio de auditoria na tabela `stock_movement` e validação estrita contra saldo negativo.")
 
-    tab_e, tab_s, tab_c = st.tabs(["📥 Entrada de Estoque", "📤 Saída de Estoque", "📋 Consulta de Catálogo"])
+    # Obter produtos cadastrados (do Xano se disponível ou mock completo)
+    prods_data = []
+    try:
+        if xano_client and os.getenv("XANO_BASE_URL"):
+            prods_data = xano_client.list_products()
+    except Exception:
+        pass
+
+    if not prods_data:
+        prods_data = [
+            {"id": 1, "sku": "ARM-RAY-01", "name": "Armação Ray-Ban Clubmaster RB5154", "category": "Armação", "brand": "Ray-Ban", "cost_price": 280.0, "sale_price": 680.0, "current_stock": 2, "min_stock": 5, "location": "Gaveta A1"},
+            {"id": 2, "sku": "LEN-CRIZ-02", "name": "Lente Multifocal Crizal Sapphire HR", "category": "Lente Oftálmica", "brand": "Essilor", "cost_price": 350.0, "sale_price": 950.0, "current_stock": 8, "min_stock": 4, "location": "Prateleira L2"},
+            {"id": 3, "sku": "CON-ACUV-03", "name": "Lente de Contato Acuvue Oasys (Grau -2.50)", "category": "Lente de Contato", "brand": "Johnson & Johnson", "cost_price": 85.0, "sale_price": 175.0, "current_stock": 1, "min_stock": 8, "location": "Gaveta C3"},
+            {"id": 4, "sku": "ARM-OAK-04", "name": "Armação Oakley Crosslink Zero", "category": "Armação", "brand": "Oakley", "cost_price": 310.0, "sale_price": 720.0, "current_stock": 6, "min_stock": 3, "location": "Vitrine Principal"},
+            {"id": 5, "sku": "SOL-LIMP-05", "name": "Solução de Limpeza Opti-Free PureMoist 300ml", "category": "Acessórios", "brand": "Alcon", "cost_price": 22.0, "sale_price": 58.0, "current_stock": 0, "min_stock": 6, "location": "Balcão Checkout"},
+        ]
+
+    # Identificar itens abaixo do estoque mínimo (Replenishment)
+    rupture_items = [p for p in prods_data if p.get("current_stock", 0) <= p.get("min_stock", 0)]
+    zero_items = [p for p in prods_data if p.get("current_stock", 0) == 0]
+
+    # Indicadores rápidos de topo
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.markdown(f"""
+        <div class="metric-widget">
+            <div class="metric-label">Total de SKUs Ativos</div>
+            <div class="metric-value">{len(prods_data)}</div>
+            <div class="metric-sub" style="color: #3942F6;">Catálogo Monitorado</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with k2:
+        st.markdown(f"""
+        <div class="metric-widget" style="border-left: 5px solid {'#EF4444' if rupture_items else '#10B981'};">
+            <div class="metric-label">Itens no Ponto de Pedido</div>
+            <div class="metric-value" style="color: {'#EF4444' if rupture_items else '#10B981'};">{len(rupture_items)}</div>
+            <div class="metric-sub" style="color: {'#EF4444' if rupture_items else '#10B981'};">{'⚠️ Ação Imediata' if rupture_items else '✅ Níveis Adequados'}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with k3:
+        st.markdown(f"""
+        <div class="metric-widget" style="border-left: 5px solid {'#DC2626' if zero_items else '#10B981'};">
+            <div class="metric-label">Ruptura Total (Estoque Zero)</div>
+            <div class="metric-value" style="color: {'#DC2626' if zero_items else '#10B981'};">{len(zero_items)}</div>
+            <div class="metric-sub" style="color: {'#DC2626' if zero_items else '#10B981'};">{'🚫 Vendas Perdidas' if zero_items else '✅ Sem Faltas Críticas'}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with k4:
+        total_pecas = sum(p.get("current_stock", 0) for p in prods_data)
+        st.markdown(f"""
+        <div class="metric-widget">
+            <div class="metric-label">Saldo Físico Total</div>
+            <div class="metric-value">{total_pecas} un</div>
+            <div class="metric-sub" style="color: #64748B;">Estoque em Loja</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+
+    tab_e, tab_s, tab_c, tab_r = st.tabs([
+        "📥 Entrada de Estoque", 
+        "📤 Saída de Estoque", 
+        "📋 Consulta de Catálogo",
+        "🚨 Alertas & Reposição (Replenishment)"
+    ])
 
     with tab_e:
         st.markdown("#### Registrar Entrada de Mercadoria")
-        p_id = st.number_input("ID do Produto:", min_value=1, value=1, step=1, key="ent_pid")
-        qty = st.number_input("Quantidade:", min_value=1, value=5, step=1, key="ent_qty")
-        reason = st.text_input("Justificativa / Nota Fiscal:", value="NF 4920 - Recebimento Fornecedor", key="ent_rsn")
+        col_pe1, col_pe2 = st.columns(2)
+        with col_pe1:
+            p_id = st.number_input("ID do Produto:", min_value=1, value=1, step=1, key="ent_pid")
+            qty = st.number_input("Quantidade:", min_value=1, value=5, step=1, key="ent_qty")
+            unit_cost = st.number_input("Custo Unitário (R$):", min_value=0.0, value=150.0, step=10.0, key="ent_cost")
+        with col_pe2:
+            reason = st.text_input("Justificativa / Nota Fiscal:", value="NF 4920 - Recebimento Fornecedor", key="ent_rsn")
+            supplier = st.text_input("Fornecedor / Fabricante:", value="EssilorLuxottica Distribuidora", key="ent_supp")
+            batch_id = st.text_input("Lote Técnico / Batch:", value="LOTE-2026-X1", key="ent_batch")
 
         if st.button("Confirmar Entrada Auditada", type="primary", key="btn_ent"):
             try:
                 if xano_client:
-                    res = xano_client.record_stock_entry({"product_id": p_id, "quantity": qty, "reason": reason, "unit_cost": 0, "user_id": 1})
+                    res = xano_client.record_stock_entry({
+                        "product_id": p_id,
+                        "quantity": int(qty),
+                        "reason": reason,
+                        "unit_cost": float(unit_cost),
+                        "supplier_id": supplier,
+                        "batch_id": batch_id,
+                        "user_id": 1
+                    })
                     st.success(f"✅ Entrada registrada e auditada com sucesso! Novo saldo: {res.get('product', {}).get('current_stock', 'N/A')}")
                 else:
                     st.warning("Serviço Xano não configurado ou offline. Operação simulada localmente com sucesso.")
@@ -1027,14 +1106,28 @@ elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
 
     with tab_s:
         st.markdown("#### Registrar Saída de Estoque")
-        p_id_s = st.number_input("ID do Produto:", min_value=1, value=1, step=1, key="sai_pid")
-        qty_s = st.number_input("Quantidade a Retirar:", min_value=1, value=1, step=1, key="sai_qty")
-        reason_s = st.text_input("Motivo da Saída (Obrigatório):", value="Venda Balcão Pedido #402", key="sai_rsn")
+        col_ps1, col_ps2 = st.columns(2)
+        with col_ps1:
+            p_id_s = st.number_input("ID do Produto:", min_value=1, value=1, step=1, key="sai_pid")
+            qty_s = st.number_input("Quantidade a Retirar:", min_value=1, value=1, step=1, key="sai_qty")
+        with col_ps2:
+            reason_s = st.selectbox("Motivo da Saída:", ["Venda Balcão PDV", "LOSS", "DAMAGE", "Montagem de Laboratório", "Transferência entre Lojas"], key="sai_rsn")
+            justification = ""
+            if reason_s in ["LOSS", "DAMAGE"]:
+                justification = st.text_area("Justificativa Obrigatória (Auditoria):", value="Armação trincada no ajuste de charneira", key="sai_just")
 
         if st.button("Confirmar Saída com Verificação de Saldo", type="primary", key="btn_sai"):
             try:
                 if xano_client:
-                    res = xano_client.record_stock_exit({"product_id": p_id_s, "quantity": qty_s, "reason": reason_s, "user_id": 1})
+                    payload_s = {
+                        "product_id": p_id_s,
+                        "quantity": int(qty_s),
+                        "reason": reason_s,
+                        "user_id": 1
+                    }
+                    if justification:
+                        payload_s["justification"] = justification
+                    res = xano_client.record_stock_exit(payload_s)
                     st.success(f"✅ Saída concluída e auditada! Saldo atualizado: {res.get('product', {}).get('current_stock', 'N/A')}")
                 else:
                     st.warning("Serviço Xano não configurado. Em caso de saldo insuficiente, o backend rejeitaria com HTTP 400 conforme AGENTS.md.")
@@ -1042,16 +1135,537 @@ elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
                 st.error(f"Erro na saída: {e}")
 
     with tab_c:
-        st.markdown("#### Produtos Cadastrados")
+        st.markdown("#### Produtos Cadastrados & Localização")
+        st.dataframe(prods_data, use_container_width=True)
+
+    with tab_r:
+        st.markdown("#### 🚨 Painel de Reposição & Prevenção de Rupturas (Replenishment)")
+        st.markdown("Este painel identifica automaticamente produtos com estoque igual ou inferior ao nível mínimo de segurança (`current_stock <= min_stock`) e calcula o lote ideal de ressuprimento.")
+
+        if rupture_items:
+            # Tabela de Sugestão de Compras
+            sugestoes = []
+            for item in rupture_items:
+                cur = item.get("current_stock", 0)
+                mini = item.get("min_stock", 0)
+                # Lote sugerido para atingir o dobro do estoque mínimo
+                sugestao_compra = max(mini * 2 - cur, mini)
+                custo = item.get("cost_price", 0.0)
+                total_investimento = sugestao_compra * custo
+
+                sugestoes.append({
+                    "ID": item.get("id"),
+                    "SKU": item.get("sku"),
+                    "Produto": item.get("name"),
+                    "Categoria": item.get("category"),
+                    "Estoque Atual": f"🔴 {cur}" if cur == 0 else f"🟡 {cur}",
+                    "Estoque Mínimo": mini,
+                    "Sugestão de Reposição": f"📦 +{sugestao_compra} un",
+                    "Custo Estimado": f"R$ {total_investimento:,.2f}",
+                    "Localização": item.get("location", "N/A")
+                })
+
+            st.dataframe(sugestoes, use_container_width=True)
+
+            col_rep1, col_rep2 = st.columns(2)
+            with col_rep1:
+                st.markdown("""
+                <div class="urgent-banner">
+                    <span style="font-size: 1.5rem;">⚠️</span>
+                    <div>
+                        <strong>Atenção do Gerente / Comprador:</strong><br>
+                        Itens em vermelho ou amarelo correm risco de perda de venda imediata no balcão. Recomenda-se gerar pedido aos fornecedores listados.
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_rep2:
+                if st.button("📄 Exportar Pedido de Reposição para Cotação", type="secondary"):
+                    st.success("✅ Pedido consolidado gerado com sucesso para cotação junto aos fornecedores parceiros!")
+        else:
+            st.success("🎉 Parabéns! Todos os produtos monitorados estão operando com saldo acima do estoque mínimo de segurança.")
+
+
+# -----------------------------------------------------------------------------
+# CHANGE 03: INVENTÁRIO FÍSICO & CONCILIAÇÃO DE ESTOQUE
+# -----------------------------------------------------------------------------
+elif menu_option == "📦 Inventário Físico & Conciliação (Change 03)":
+    st.subheader("📦 Inventário Físico & Conciliação de Estoque")
+    st.caption("Fluxo de ponta a ponta: abertura → contagem física → conciliação → aprovação do gestor → aplicação do ajuste (reutiliza o ledger de auditoria da Change 02).")
+
+    # ------------------------------------------------------------------
+    # Helpers de persistência (real via Xano ou mock de demonstração)
+    # ------------------------------------------------------------------
+    _DEFAULT_INV_PRODUCTS = [
+        {"id": 1, "sku": "ARM-RAY-01", "name": "Armação Ray-Ban Clubmaster RB5154", "category": "Armação", "brand": "Ray-Ban", "current_stock": 2, "min_stock": 5, "location": "Gaveta A1"},
+        {"id": 2, "sku": "LEN-CRIZ-02", "name": "Lente Multifocal Crizal Sapphire HR", "category": "Lente Oftálmica", "brand": "Essilor", "current_stock": 8, "min_stock": 4, "location": "Prateleira L2"},
+        {"id": 3, "sku": "CON-ACUV-03", "name": "Lente de Contato Acuvue Oasys (Grau -2.50)", "category": "Lente de Contato", "brand": "Johnson & Johnson", "current_stock": 1, "min_stock": 8, "location": "Gaveta C3"},
+        {"id": 4, "sku": "ARM-OAK-04", "name": "Armação Oakley Crosslink Zero", "category": "Armação", "brand": "Oakley", "current_stock": 6, "min_stock": 3, "location": "Vitrine Principal"},
+        {"id": 5, "sku": "SOL-LIMP-05", "name": "Solução de Limpeza Opti-Free PureMoist 300ml", "category": "Acessórios", "brand": "Alcon", "current_stock": 0, "min_stock": 6, "location": "Balcão Checkout"},
+    ]
+
+    def _inv_products():
+        """Catálogo de produtos (real via Xano ou mock)."""
         try:
             if xano_client and os.getenv("XANO_BASE_URL"):
-                prods = xano_client.list_products()
-                st.dataframe(prods, use_container_width=True)
+                data = xano_client.list_products()
+                st.session_state["inv_products"] = data
+                return data
+        except Exception as exc:
+            st.session_state["inv_xano_warning"] = str(exc)
+        if "inv_products" not in st.session_state:
+            st.session_state["inv_products"] = list(_DEFAULT_INV_PRODUCTS)
+        return st.session_state["inv_products"]
+
+    def _inv_state(key, default=None):
+        if key not in st.session_state:
+            st.session_state[key] = default if default is not None else []
+        return st.session_state[key]
+
+    def _inv_save(key, value):
+        st.session_state[key] = value
+
+    def _inv_show_xano_warning():
+        if st.session_state.get("inv_xano_warning") and not st.session_state.get("inv_warning_shown"):
+            st.warning("Serviço Xano indisponível (" + st.session_state["inv_xano_warning"] + "). Usando dados de demonstração locais para navegação.")
+            st.session_state["inv_warning_shown"] = True
+
+    products = _inv_products()
+    product_by_id = {p["id"]: p for p in products}
+
+    inventories = _inv_state("inv_inventories")
+    counts = _inv_state("inv_counts")
+    discrepancies = _inv_state("inv_discrepancies")
+    decisions = _inv_state("inv_decisions")
+
+    def _inv_real(fn, *args, **kwargs):
+        """Tenta chamada real ao Xano; retorna None se indisponível (usa mock)."""
+        if not (xano_client and os.getenv("XANO_BASE_URL")):
+            _inv_show_xano_warning()
+            return None
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            st.session_state["inv_xano_warning"] = str(exc)
+            _inv_show_xano_warning()
+            return None
+
+    # ------------------------------------------------------------------
+    # Sub-tabs do módulo de inventário
+    # ------------------------------------------------------------------
+    sub_tabs = st.tabs([
+        "📋 Listagem de Inventários",
+        "➕ Criar Inventário",
+        "🔢 Contagem Física",
+        "⚖️ Conciliação & Divergências",
+        "✅ Aprovação do Gestor",
+        "📜 Histórico & Ajustes",
+    ])
+
+    # ------------------- 1. Listagem -------------------
+    with sub_tabs[0]:
+        st.markdown("### 📋 Inventários Cadastrados")
+        col_ref1, col_ref2 = st.columns([3, 1])
+        with col_ref1:
+            filtro_status = st.selectbox("Filtrar por status:", options=["Todos", "Aberto", "EmContagem", "AguardandoAprovacao", "Concluido"], key="inv_list_status")
+        with col_ref2:
+            if st.button("🔄 Atualizar listagem", key="inv_list_refresh"):
+                st.rerun()
+
+        real_inventories = _inv_real(xano_client.list_inventories,
+                                     None if filtro_status == "Todos" else {"status": filtro_status})
+        if real_inventories is not None:
+            inventories = real_inventories
+            _inv_save("inv_inventories", inventories)
+
+        if not inventories:
+            st.info("Nenhum inventário encontrado. Crie um na aba 'Criar Inventário'.")
+        else:
+            rows = []
+            for inv in inventories:
+                inv_id = inv.get("id")
+                inv_counts_list = [c for c in counts if c.get("inventory_id") == inv_id]
+                rows.append({
+                    "ID": inv_id,
+                    "Status": inv.get("status"),
+                    "Escopo": inv.get("scope"),
+                    "Responsável (usuario_id)": inv.get("opened_by"),
+                    "Abertura": str(inv.get("opened_at", ""))[:16],
+                    "Contagens registradas": len(inv_counts_list),
+                })
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+
+            st.markdown("### Selecionar inventário para operar")
+            inv_options = {f"#{inv.get('id')} — {inv.get('status')} ({inv.get('scope')})": inv.get("id") for inv in inventories}
+            sel_label = st.selectbox("Inventário:", options=list(inv_options.keys()), key="inv_list_select")
+            if st.button("Usar inventário selecionado nas outras abas", key="inv_list_use"):
+                st.session_state["inv_selected_id"] = inv_options[sel_label]
+                st.success("Inventário #" + str(inv_options[sel_label]) + " selecionado. Use as outras abas.")
+
+    # ------------------- 2. Criação -------------------
+    with sub_tabs[1]:
+        st.markdown("### ➕ Criar Novo Inventário Físico")
+        with st.form("inv_create_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                scope = st.selectbox("Escopo do inventário:", options=["completo", "categoria", "localizacao"], key="inv_c_scope")
+                opened_by = st.number_input("Usuário responsável (ID):", min_value=1, value=1, step=1, key="inv_c_user")
+            with c2:
+                category_filter = st.text_input("Categoria (filtro):", placeholder="ex: Armação", key="inv_c_cat")
+                location_filter = st.text_input("Localização (filtro):", placeholder="ex: Gaveta A1", key="inv_c_loc")
+            notes = st.text_area("Observações:", key="inv_c_notes")
+            criar = st.form_submit_button("Criar Inventário", type="primary")
+
+        if criar:
+            payload = {
+                "scope": scope,
+                "opened_by": int(opened_by),
+                "status": "Aberto",
+                "category_filter": category_filter if category_filter else None,
+                "location_filter": location_filter if location_filter else None,
+                "notes": notes if notes else None,
+            }
+            res = _inv_real(xano_client.create_inventory, payload)
+            if res is None:
+                # Fallback local para demonstração/offline
+                new_id = max([i.get("id", 0) for i in inventories] or [0]) + 1
+                new_inv = dict(payload, id=new_id, opened_at=str(datetime.now()))
             else:
-                st.dataframe([
-                    {"id": 1, "sku": "ARM-RAY-01", "name": "Armação Ray-Ban Clubmaster", "category": "Armação", "current_stock": 14, "min_stock": 5},
-                    {"id": 2, "sku": "LEN-CRIZ-02", "name": "Lente Multifocal Crizal Sapphire HR", "category": "Lente Oftálmica", "current_stock": 8, "min_stock": 4},
-                    {"id": 3, "sku": "CON-ACUV-03", "name": "Lente de Contato Acuvue Oasys", "category": "Lente de Contato", "current_stock": 25, "min_stock": 10},
-                ], use_container_width=True)
-        except Exception as e:
-            st.error(f"Erro ao listar catálogo: {e}")
+                new_inv = res
+
+            _inv_save("inv_inventories", inventories + [new_inv])
+            st.success("✅ Inventário #" + str(new_inv.get("id")) + " criado com status " + str(new_inv.get("status")) + ".")
+            st.session_state["inv_selected_id"] = new_inv.get("id")
+
+    # ------------------- 3. Contagem Física -------------------
+    with sub_tabs[2]:
+        st.markdown("### 🔢 Contagem Física de Produtos")
+        st.info("O saldo de estoque NÃO é alterado durante a contagem. A contagem apenas registra a quantidade física encontrada.")
+
+        selected_id = st.session_state.get("inv_selected_id")
+        inv_for_count = None
+        if selected_id:
+            inv_for_count = next((i for i in inventories if i.get("id") == selected_id), None)
+
+        if not inv_for_count:
+            st.warning("Selecione um inventário na aba de listagem primeiro.")
+        else:
+            st.write("**Inventário #" + str(selected_id) + "** — Status: " + str(inv_for_count.get("status")) + " — Escopo: " + str(inv_for_count.get("scope")))
+            if inv_for_count.get("status") not in ["Aberto", "EmContagem"]:
+                st.error("Este inventário não está aberto para contagem (status: " + str(inv_for_count.get("status")) + ").")
+
+            cego = st.checkbox("👁️‍🗨️ Modo de contagem cego (ocultar saldo esperado até o envio)", key="inv_count_cego")
+
+            prod_options = {f"{p['sku']} — {p['name']} (saldo: {p.get('current_stock', '?')})": p["id"] for p in products}
+            sel_prod_label = st.selectbox("Produto a contar:", options=list(prod_options.keys()), key="inv_count_prod")
+            prod_id = prod_options[sel_prod_label]
+            prod = product_by_id.get(prod_id, {})
+
+            if not cego:
+                st.caption("Saldo registrado no sistema: **" + str(prod.get("current_stock", "?")) + "** un (apenas referência, não alterado pela contagem).")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                qty = st.number_input("Quantidade física encontrada:", min_value=0, value=0, step=1, key="inv_count_qty")
+            with c2:
+                counted_by = st.number_input("Usuário que conta (ID):", min_value=1, value=1, step=1, key="inv_count_user")
+            is_recount = st.checkbox("Esta é uma recontagem (preserva o registro anterior)", key="inv_count_recount")
+            count_notes = st.text_area("Observações / justificativas:", key="inv_count_notes")
+
+            if st.button("Registrar Contagem", type="primary", key="inv_count_reg"):
+                if inv_for_count.get("status") not in ["Aberto", "EmContagem"]:
+                    st.error("Não é possível contar: inventário não está em contagem.")
+                else:
+                    # Iniciar contagem: mover para EmContagem se ainda estiver Aberto
+                    if inv_for_count.get("status") == "Aberto":
+                        _inv_real(xano_client.transition_inventory_status, selected_id, "EmContagem", int(counted_by))
+                        for i in inventories:
+                            if i.get("id") == selected_id:
+                                i["status"] = "EmContagem"
+                        _inv_save("inv_inventories", inventories)
+
+                    payload = {
+                        "inventory_id": int(selected_id),
+                        "product_id": int(prod_id),
+                        "quantity_counted": int(qty),
+                        "counted_by": int(counted_by),
+                        "is_recount": bool(is_recount),
+                        "notes": count_notes if count_notes else None,
+                    }
+                    res = _inv_real(xano_client.record_inventory_count, payload)
+                    if res is None:
+                        new_count = dict(payload, id=len(counts) + 1, counted_at=str(datetime.now()))
+                    else:
+                        new_count = res
+
+                    # Atualizar ou adicionar na lista
+                    existing_idx = None
+                    for idx, c in enumerate(counts):
+                        if c.get("inventory_id") == selected_id and c.get("product_id") == prod_id and not c.get("is_recount"):
+                            existing_idx = idx
+                            break
+                    if existing_idx is not None and not is_recount:
+                        counts[existing_idx] = new_count
+                    else:
+                        counts.append(new_count)
+                    _inv_save("inv_counts", counts)
+                    st.success("✅ Contagem registrada: " + str(qty) + " un para " + str(prod.get("name")) + ".")
+
+            st.markdown("#### Contagens já registradas neste inventário")
+            inv_counts_list = [c for c in counts if c.get("inventory_id") == selected_id]
+            if not inv_counts_list:
+                st.caption("Nenhuma contagem registrada ainda.")
+            else:
+                count_rows = []
+                for c in inv_counts_list:
+                    p = product_by_id.get(c.get("product_id"), {})
+                    count_rows.append({
+                        "Produto": p.get("name", "ID " + str(c.get("product_id"))),
+                        "SKU": p.get("sku", ""),
+                        "Qtd. Contada": c.get("quantity_counted"),
+                        "Contado por (ID)": c.get("counted_by"),
+                        "Recontagem": "Sim" if c.get("is_recount") else "Não",
+                        "Data": str(c.get("counted_at", ""))[:16],
+                    })
+                st.dataframe(count_rows, use_container_width=True, hide_index=True)
+
+    # ------------------- 4. Conciliação & Divergências -------------------
+    with sub_tabs[3]:
+        st.markdown("### ⚖️ Conciliação de Estoque")
+        st.caption("Compara a quantidade física contada com o saldo de referência do sistema e classifica a divergência.")
+
+        selected_id = st.session_state.get("inv_selected_id")
+        if not selected_id:
+            st.warning("Selecione um inventário na aba de listagem primeiro.")
+        else:
+            inv = next((i for i in inventories if i.get("id") == selected_id), None)
+            st.write("**Inventário #" + str(selected_id) + "** — Status: " + str(inv.get("status") if inv else "?"))
+
+            if st.button("Executar Conciliação", type="primary", key="inv_reconcile"):
+                res = _inv_real(xano_client.reconcile_inventory, selected_id, 1)
+                if res is not None:
+                    st.success("✅ Conciliação executada. Status do inventário: " + str(res.get("status")) + ".")
+                    real_disc = _inv_real(xano_client.list_discrepancies, selected_id)
+                    if real_disc is not None:
+                        discrepancies = real_disc
+                        _inv_save("inv_discrepancies", discrepancies)
+                else:
+                    # Fallback local de conciliação
+                    inv_counts_list = [c for c in counts if c.get("inventory_id") == selected_id]
+                    disc_list = []
+                    for c in inv_counts_list:
+                        p = product_by_id.get(c.get("product_id"), {})
+                        ref_qty = p.get("current_stock", 0)
+                        diff = c.get("quantity_counted", 0) - ref_qty
+                        if diff == 0:
+                            dtype = "none"
+                            impact = "Sem divergência"
+                        elif diff < 0:
+                            dtype = "shortage"
+                            impact = "Falta de estoque: físico menor que o registrado."
+                        else:
+                            dtype = "overage"
+                            impact = "Sobra de estoque: físico maior que o registrado."
+                        disc_list.append({
+                            "id": len(disc_list) + 1,
+                            "inventory_id": selected_id,
+                            "product_id": c.get("product_id"),
+                            "reference_quantity": ref_qty,
+                            "counted_quantity": c.get("quantity_counted"),
+                            "difference": diff,
+                            "divergence_type": dtype,
+                            "impact": impact,
+                            "status": "pending",
+                            "adjustment_applied": False,
+                        })
+                    discrepancies = disc_list
+                    _inv_save("inv_discrepancies", discrepancies)
+                    if inv:
+                        inv["status"] = "AguardandoAprovacao"
+                        _inv_save("inv_inventories", inventories)
+                    st.success("✅ Conciliação simulada localmente com sucesso! Status: AguardandoAprovacao.")
+
+            st.markdown("#### Divergências encontradas")
+            real_disc = _inv_real(xano_client.list_discrepancies, selected_id)
+            if real_disc is not None:
+                discrepancies = real_disc
+                _inv_save("inv_discrepancies", discrepancies)
+
+            inv_discs = [d for d in discrepancies if d.get("inventory_id") == selected_id]
+            if not inv_discs:
+                st.caption("Nenhuma divergência calculada ainda. Execute a conciliação acima.")
+            else:
+                for d in inv_discs:
+                    p = product_by_id.get(d.get("product_id"), {})
+                    dtype = d.get("divergence_type", "none")
+                    badge = {"none": "✅ Sem divergência", "shortage": "⚠️ Falta de estoque", "overage": "📦 Sobra de estoque"}.get(dtype, dtype)
+                    with st.container():
+                        st.markdown(f"""
+                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div><b>{p.get('name', 'Produto')} ({p.get('sku','')})</b></div>
+                                <div style="font-weight:700;">{badge}</div>
+                            </div>
+                            <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                                Contado: <b>{d.get('counted_quantity')}</b> &nbsp;|&nbsp;
+                                Referência (sistema): <b>{d.get('reference_quantity')}</b> &nbsp;|&nbsp;
+                                Diferença: <b>{d.get('difference')}</b> &nbsp;|&nbsp;
+                                Status: <b>{d.get('status')}</b>
+                            </div>
+                            <div style="font-size:0.8rem; margin-top:4px;">Impacto: {d.get('impact','')}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+    # ------------------- 5. Aprovação do Gestor -------------------
+    with sub_tabs[4]:
+        st.markdown("### ✅ Aprovação de Divergências (Gestor)")
+        st.caption("Somente gestores podem aprovar, rejeitar ou solicitar recontagem. Validação feita no backend.")
+
+        selected_id = st.session_state.get("inv_selected_id")
+        if not selected_id:
+            st.warning("Selecione um inventário na aba de listagem primeiro.")
+        else:
+            inv_discs = [d for d in discrepancies if d.get("inventory_id") == selected_id and d.get("status") == "pending"]
+            if not inv_discs:
+                st.info("Não há divergências pendentes de decisão neste inventário.")
+            else:
+                st.write("Divergências aguardando decisão do gestor:")
+                for d in inv_discs:
+                    p = product_by_id.get(d.get("product_id"), {})
+                    with st.container():
+                        st.markdown(f"""
+                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div><b>{p.get('name', 'Produto')} ({p.get('sku','')})</b></div>
+                                <div style="font-weight:700; color:#b45309;">Pendente</div>
+                            </div>
+                            <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                                Contado: <b>{d.get('counted_quantity')}</b> &nbsp;|&nbsp;
+                                Referência: <b>{d.get('reference_quantity')}</b> &nbsp;|&nbsp;
+                                Diferença: <b>{d.get('difference')}</b> ({d.get('divergence_type')})
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        dec_col1, dec_col2, dec_col3, dec_col4 = st.columns([2, 2, 2, 3])
+                        with dec_col1:
+                            if st.button("✅ Aprovar ajuste", key="inv_ap_" + str(d.get("id"))):
+                                res = _inv_real(xano_client.decide_discrepancy, {
+                                    "inventory_id": selected_id,
+                                    "discrepancy_id": int(d.get("id")),
+                                    "action": "approved",
+                                    "decided_by": 1,
+                                    "justification": "Aprovação de divergência de inventário.",
+                                })
+                                if res is not None:
+                                    for idx, dd in enumerate(discrepancies):
+                                        if dd.get("id") == d.get("id"):
+                                            discrepancies[idx] = res
+                                            break
+                                    _inv_save("inv_discrepancies", discrepancies)
+                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "approved", "decided_by": 1, "decided_at": str(datetime.now()), "justification": "Aprovação de divergência de inventário.", "previous_status": "pending"})
+                                    _inv_save("inv_decisions", decisions)
+                                    st.success("Divergência aprovada.")
+                                    st.rerun()
+                        with dec_col2:
+                            rej_just = st.text_input("Justificativa da rejeição:", key="inv_rej_" + str(d.get("id")))
+                            if st.button("❌ Rejeitar", key="inv_rj_" + str(d.get("id"))):
+                                res = _inv_real(xano_client.decide_discrepancy, {
+                                    "inventory_id": selected_id,
+                                    "discrepancy_id": int(d.get("id")),
+                                    "action": "rejected",
+                                    "decided_by": 1,
+                                    "justification": rej_just if rej_just else "Rejeitada pelo gestor.",
+                                })
+                                if res is not None:
+                                    for idx, dd in enumerate(discrepancies):
+                                        if dd.get("id") == d.get("id"):
+                                            discrepancies[idx] = res
+                                            break
+                                    _inv_save("inv_discrepancies", discrepancies)
+                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "rejected", "decided_by": 1, "decided_at": str(datetime.now()), "justification": rej_just if rej_just else "Rejeitada pelo gestor.", "previous_status": "pending"})
+                                    _inv_save("inv_decisions", decisions)
+                                    st.success("Divergência rejeitada (nenhum ajuste gerado).")
+                                    st.rerun()
+                        with dec_col3:
+                            if st.button("🔄 Solicitar recontagem", key="inv_rc_" + str(d.get("id"))):
+                                res = _inv_real(xano_client.decide_discrepancy, {
+                                    "inventory_id": selected_id,
+                                    "discrepancy_id": int(d.get("id")),
+                                    "action": "recount_requested",
+                                    "decided_by": 1,
+                                    "justification": "Recontagem solicitada pelo gestor.",
+                                })
+                                if res is not None:
+                                    for idx, dd in enumerate(discrepancies):
+                                        if dd.get("id") == d.get("id"):
+                                            discrepancies[idx] = res
+                                            break
+                                    _inv_save("inv_discrepancies", discrepancies)
+                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "recount_requested", "decided_by": 1, "decided_at": str(datetime.now()), "justification": "Recontagem solicitada pelo gestor.", "previous_status": "pending"})
+                                    _inv_save("inv_decisions", decisions)
+                                    for i in inventories:
+                                        if i.get("id") == selected_id:
+                                            i["status"] = "EmContagem"
+                                    _inv_save("inv_inventories", inventories)
+                                    st.success("Recontagem solicitada. Inventário reaberto para contagem.")
+                                    st.rerun()
+                        with dec_col4:
+                            st.caption("ID da divergência: " + str(d.get("id")))
+
+    # ------------------- 6. Histórico & Ajustes -------------------
+    with sub_tabs[5]:
+        st.markdown("### 📜 Histórico de Decisões e Ajustes")
+        selected_id = st.session_state.get("inv_selected_id")
+        if not selected_id:
+            st.warning("Selecione um inventário na aba de listagem primeiro.")
+        else:
+            if st.button("🔄 Aplicar Ajustes Aprovados ao Estoque", type="primary", key="inv_apply"):
+                res = _inv_real(xano_client.apply_adjustments, selected_id, 1)
+                if res is not None:
+                    st.success("✅ " + str(res.get("message", "")) + " Aplicados: " + str(res.get("applied")) + ", Ignorados (concorrência): " + str(res.get("skipped")) + ".")
+                    # Atualizar mock de produtos e discrepâncias
+                    products = _inv_products()
+                    product_by_id = {p["id"]: p for p in products}
+                    real_disc = _inv_real(xano_client.list_discrepancies, selected_id)
+                    if real_disc is not None:
+                        discrepancies = real_disc
+                        _inv_save("inv_discrepancies", discrepancies)
+
+            st.markdown("#### Decisões tomadas")
+            inv_decisions = [d for d in decisions if d.get("inventory_id") == selected_id]
+            if not inv_decisions:
+                st.caption("Nenhuma decisão registrada ainda.")
+            else:
+                dec_rows = []
+                for dec in inv_decisions:
+                    dec_rows.append({
+                        "Divergência #": dec.get("discrepancy_id"),
+                        "Ação": dec.get("action"),
+                        "Decidido por (ID)": dec.get("decided_by"),
+                        "Data": str(dec.get("decided_at", ""))[:16],
+                        "Justificativa": dec.get("justification", ""),
+                        "Status anterior": dec.get("previous_status"),
+                    })
+                st.dataframe(dec_rows, use_container_width=True, hide_index=True)
+
+            st.markdown("#### Divergências com ajuste aplicado (ledger de auditoria)")
+            applied = [d for d in discrepancies if d.get("inventory_id") == selected_id and d.get("adjustment_applied")]
+            if not applied:
+                st.caption("Nenhum ajuste aplicado ainda.")
+            else:
+                for d in applied:
+                    p = product_by_id.get(d.get("product_id"), {})
+                    st.markdown(f"""
+                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:8px; margin-bottom:6px; background:#f8fafc;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div><b>{p.get('name', 'Produto')} ({p.get('sku','')})</b></div>
+                            <div style="font-weight:700; color:#10b981;">Ajuste aplicado</div>
+                        </div>
+                        <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                            Movimento de ajuste (ledger): <b>#{d.get('adjustment_movement_id')}</b> &nbsp;|&nbsp;
+                            Contado: <b>{d.get('counted_quantity')}</b> &nbsp;|&nbsp;
+                            Referência: <b>{d.get('reference_quantity')}</b> &nbsp;|&nbsp;
+                            Diferença: <b>{d.get('difference')}</b> ({d.get('divergence_type')})
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+

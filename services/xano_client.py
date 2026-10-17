@@ -45,6 +45,38 @@ def _get_stock_exit_endpoint() -> str:
     return _format_endpoint("stock_exit")
 
 
+def _get_inventories_endpoint() -> str:
+    return _format_endpoint("inventories")
+
+
+def _get_inventory_endpoint() -> str:
+    return _format_endpoint("inventory")
+
+
+def _get_inventory_status_endpoint() -> str:
+    return _format_endpoint("inventories/status")
+
+
+def _get_inventory_counts_endpoint() -> str:
+    return _format_endpoint("inventories/counts")
+
+
+def _get_inventory_reconcile_endpoint() -> str:
+    return _format_endpoint("inventories/reconcile")
+
+
+def _get_inventory_discrepancies_endpoint() -> str:
+    return _format_endpoint("inventories/discrepancies")
+
+
+def _get_inventory_discrepancy_decision_endpoint() -> str:
+    return _format_endpoint("inventories/discrepancies/decision")
+
+
+def _get_inventory_apply_adjustments_endpoint() -> str:
+    return _format_endpoint("inventories/apply-adjustments")
+
+
 def _handle_response(response: requests.Response) -> Any:
     """Internal helper to raise for HTTP errors and return JSON payload."""
     try:
@@ -138,4 +170,230 @@ def record_stock_exit(payload: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError("A justificativa é obrigatória quando o motivo é LOSS ou DAMAGE.")
 
     response = requests.post(_get_stock_exit_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+# ---------------------------------------------------------------------------
+# Inventário físico e conciliação (Change 03)
+# ---------------------------------------------------------------------------
+
+_VALID_INVENTORY_STATUSES = ["Aberto", "EmContagem", "AguardandoAprovacao", "Concluido"]
+_VALID_DISCREPANCY_ACTIONS = ["approved", "rejected", "recount_requested"]
+
+
+def list_inventories(filters: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    """Listar inventários físicos.
+
+    Args:
+        filters: Filtros opcionais (ex: ``{"status": "Aberto", "opened_by": "1"}``).
+
+    Returns:
+        Lista de inventários conforme retornado pelo Xano.
+    """
+    params = filters or {}
+    response = requests.get(_get_inventories_endpoint(), params=params, timeout=10)
+    return _handle_response(response)
+
+
+def get_inventory(inventory_id: int) -> Dict[str, Any]:
+    """Consultar detalhes de um inventário, incluindo progresso da contagem.
+
+    Args:
+        inventory_id: ID do inventário.
+
+    Returns:
+        Detalhe do inventário com progresso de contagem.
+    """
+    if not inventory_id:
+        raise ValueError("inventory_id é obrigatório.")
+    response = requests.get(
+        _get_inventory_endpoint(),
+        params={"id": int(inventory_id)},
+        timeout=10,
+    )
+    return _handle_response(response)
+
+
+def create_inventory(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Criar um novo inventário físico com status ``Aberto``.
+
+    Args:
+        payload: Dicionário com ``scope``, ``opened_by`` e opcionais
+        ``status``, ``category_filter``, ``location_filter``, ``notes``.
+
+    Returns:
+        Registro do inventário criado.
+    """
+    scope = payload.get("scope")
+    if not scope or not str(scope).strip():
+        raise ValueError("O escopo do inventário é obrigatório.")
+    if not payload.get("opened_by"):
+        raise ValueError("O responsável pela abertura (opened_by) é obrigatório.")
+    status = payload.get("status", "Aberto")
+    if status not in _VALID_INVENTORY_STATUSES:
+        raise ValueError("Status inválido. Use: " + ", ".join(_VALID_INVENTORY_STATUSES) + ".")
+
+    response = requests.post(_get_inventories_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def transition_inventory_status(inventory_id: int, status: str, user_id: int) -> Dict[str, Any]:
+    """Efetuar uma transição de estado do ciclo de vida do inventário.
+
+    Args:
+        inventory_id: ID do inventário.
+        status: Status destino (``Aberto``, ``EmContagem``,
+            ``AguardandoAprovacao`` ou ``Concluido``).
+        user_id: Usuário que solicita a transição.
+
+    Returns:
+        Inventário atualizado.
+    """
+    if not inventory_id:
+        raise ValueError("inventory_id é obrigatório.")
+    if status not in _VALID_INVENTORY_STATUSES:
+        raise ValueError("Status inválido. Use: " + ", ".join(_VALID_INVENTORY_STATUSES) + ".")
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+
+    payload = {
+        "id": int(inventory_id),
+        "status": status,
+        "user_id": int(user_id),
+    }
+    response = requests.patch(_get_inventory_status_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def record_inventory_count(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Registrar ou retomar a contagem física de um produto em um inventário.
+
+    Args:
+        payload: Dicionário com ``inventory_id``, ``product_id``,
+        ``quantity_counted``, ``counted_by`` e opcionais ``is_recount``,
+        ``previous_count_id``, ``notes``.
+
+    Returns:
+        Registro da contagem criada ou atualizada.
+    """
+    for field in ["inventory_id", "product_id", "counted_by"]:
+        if not payload.get(field):
+            raise ValueError("O campo " + field + " é obrigatório.")
+    quantity = payload.get("quantity_counted")
+    if quantity is None or not isinstance(quantity, int) or quantity < 0:
+        raise ValueError("A quantidade contada deve ser um número inteiro maior ou igual a zero.")
+
+    response = requests.post(_get_inventory_counts_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def list_inventory_counts(inventory_id: int) -> List[Dict[str, Any]]:
+    """Listar as contagens físicas de um inventário.
+
+    Args:
+        inventory_id: ID do inventário.
+
+    Returns:
+        Lista de contagens, mais recente primeiro.
+    """
+    if not inventory_id:
+        raise ValueError("inventory_id é obrigatório.")
+    response = requests.get(
+        _get_inventory_counts_endpoint(),
+        params={"inventory_id": str(int(inventory_id))},
+        timeout=10,
+    )
+    return _handle_response(response)
+
+
+def reconcile_inventory(inventory_id: int, user_id: int) -> Dict[str, Any]:
+    """Executar a conciliação de estoque de um inventário.
+
+    Compara as contagens físicas com os saldos do sistema e gera as divergências.
+
+    Args:
+        inventory_id: ID do inventário.
+        user_id: Usuário que solicita a conciliação.
+
+    Returns:
+        Resultado da conciliação.
+    """
+    if not inventory_id:
+        raise ValueError("inventory_id é obrigatório.")
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+
+    payload = {
+        "inventory_id": int(inventory_id),
+        "user_id": int(user_id),
+    }
+    response = requests.post(_get_inventory_reconcile_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def list_discrepancies(inventory_id: int, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Listar as divergências de conciliação de um inventário.
+
+    Args:
+        inventory_id: ID do inventário.
+        status: Filtrar por status da divergência (opcional).
+
+    Returns:
+        Lista de divergências.
+    """
+    if not inventory_id:
+        raise ValueError("inventory_id é obrigatório.")
+    params: Dict[str, str] = {"inventory_id": str(int(inventory_id))}
+    if status:
+        params["status"] = status
+    response = requests.get(_get_inventory_discrepancies_endpoint(), params=params, timeout=10)
+    return _handle_response(response)
+
+
+def decide_discrepancy(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Registrar a decisão de um gestor sobre uma divergência.
+
+    Ações: ``approved``, ``rejected`` ou ``recount_requested``.
+
+    Args:
+        payload: Dicionário com ``inventory_id``, ``discrepancy_id``, ``action``,
+        ``decided_by`` e opcional ``justification``.
+
+    Returns:
+        Divergência atualizada com a decisão.
+    """
+    for field in ["inventory_id", "discrepancy_id", "action", "decided_by"]:
+        if not payload.get(field):
+            raise ValueError("O campo " + field + " é obrigatório.")
+    action = payload.get("action")
+    if action not in _VALID_DISCREPANCY_ACTIONS:
+        raise ValueError("Ação inválida. Use: " + ", ".join(_VALID_DISCREPANCY_ACTIONS) + ".")
+
+    response = requests.post(_get_inventory_discrepancy_decision_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def apply_adjustments(inventory_id: int, user_id: int) -> Dict[str, Any]:
+    """Aplicar os ajustes de estoque aprovados de um inventário.
+
+    Reutiliza o ledger de auditoria existente (tabela ``stock_movement``,
+    ``movement_type = "adjustment"``) da Change 02.
+
+    Args:
+        inventory_id: ID do inventário.
+        user_id: Usuário gestor que aplica os ajustes.
+
+    Returns:
+        Resumo dos ajustes aplicados e ignorados (concorrência).
+    """
+    if not inventory_id:
+        raise ValueError("inventory_id é obrigatório.")
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+
+    payload = {
+        "inventory_id": int(inventory_id),
+        "user_id": int(user_id),
+    }
+    response = requests.post(_get_inventory_apply_adjustments_endpoint(), json=payload, timeout=10)
     return _handle_response(response)
