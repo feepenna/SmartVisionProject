@@ -250,6 +250,92 @@ st.markdown("""
         font-weight: 600;
         text-align: center;
     }
+
+    /* ===== Change 05: Alertas e Reposição ===== */
+    .main-header {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1a2233;
+        margin-bottom: 0.25rem;
+        letter-spacing: -0.5px;
+    }
+
+    .sub-header {
+        font-size: 1.02rem;
+        color: #64748b;
+        margin-bottom: 1.5rem;
+        font-weight: 400;
+    }
+
+    .kpi-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 1.2rem;
+        text-align: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+        height: 100%;
+    }
+
+    .kpi-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748b;
+        margin-bottom: 0.4rem;
+    }
+
+    .kpi-value {
+        font-size: 1.9rem;
+        font-weight: 800;
+        color: #1a2233;
+        line-height: 1.1;
+    }
+
+    .kpi-delta {
+        font-size: 0.78rem;
+        margin-top: 0.25rem;
+        font-weight: 600;
+    }
+
+    .metric-label {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.35rem;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.2rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-warning { background: #FEF3C7; color: #92400E; }
+    .status-success { background: #D1FAE5; color: #065F46; }
+    .status-danger { background: #FEE2E2; color: #991B1B; }
+    .status-info { background: #DBEAFE; color: #1E40AF; }
+
+    .alert-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-left: 5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.95rem 1.15rem;
+        margin-bottom: 0.55rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .alert-critico { border-left-color: #DC2626; }
+    .alert-insuficiente { border-left-color: #D97706; }
+    .alert-regular { border-left-color: #059669; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -329,7 +415,8 @@ with st.sidebar:
             "⚡ Atalhos Operacionais (PDV / OS / Receitas)",
             "📦 Gestão de Estoque Auditado (Módulo Central)",
             "📦 Inventário Físico & Conciliação (Change 03)",
-            "🚚 Saídas de Estoque (Change 04)"
+            "🚚 Saídas de Estoque (Change 04)",
+            "🔔 Alertas & Reposição (Change 05)"
         ],
         index=0
     )
@@ -1141,49 +1228,12 @@ elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
 
     with tab_r:
         st.markdown("#### 🚨 Painel de Reposição & Prevenção de Rupturas (Replenishment)")
-        st.markdown("Este painel identifica automaticamente produtos com estoque igual ou inferior ao nível mínimo de segurança (`current_stock <= min_stock`) e calcula o lote ideal de ressuprimento.")
-
-        if rupture_items:
-            # Tabela de Sugestão de Compras
-            sugestoes = []
-            for item in rupture_items:
-                cur = item.get("current_stock", 0)
-                mini = item.get("min_stock", 0)
-                # Lote sugerido para atingir o dobro do estoque mínimo
-                sugestao_compra = max(mini * 2 - cur, mini)
-                custo = item.get("cost_price", 0.0)
-                total_investimento = sugestao_compra * custo
-
-                sugestoes.append({
-                    "ID": item.get("id"),
-                    "SKU": item.get("sku"),
-                    "Produto": item.get("name"),
-                    "Categoria": item.get("category"),
-                    "Estoque Atual": f"🔴 {cur}" if cur == 0 else f"🟡 {cur}",
-                    "Estoque Mínimo": mini,
-                    "Sugestão de Reposição": f"📦 +{sugestao_compra} un",
-                    "Custo Estimado": f"R$ {total_investimento:,.2f}",
-                    "Localização": item.get("location", "N/A")
-                })
-
-            st.dataframe(sugestoes, use_container_width=True)
-
-            col_rep1, col_rep2 = st.columns(2)
-            with col_rep1:
-                st.markdown("""
-                <div class="urgent-banner">
-                    <span style="font-size: 1.5rem;">⚠️</span>
-                    <div>
-                        <strong>Atenção do Gerente / Comprador:</strong><br>
-                        Itens em vermelho ou amarelo correm risco de perda de venda imediata no balcão. Recomenda-se gerar pedido aos fornecedores listados.
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col_rep2:
-                if st.button("📄 Exportar Pedido de Reposição para Cotação", type="secondary"):
-                    st.success("✅ Pedido consolidado gerado com sucesso para cotação junto aos fornecedores parceiros!")
-        else:
-            st.success("🎉 Parabéns! Todos os produtos monitorados estão operando com saldo acima do estoque mínimo de segurança.")
+        st.info(
+            "A gestão de alertas e sugestões de reposição foi centralizada na seção "
+            "**🔔 Alertas & Reposição (Change 05)** no menu lateral, que consome o backend "
+            "(`/smart_vision/replenishment` e `/smart_vision/alerts`) em vez de calcular "
+            "valores no cliente, conforme AGENTS.md (regra 5.2 — lógica fica no backend)."
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -2067,5 +2117,427 @@ elif menu_option == "🚚 Saídas de Estoque (Change 04)":
                         item["approved_by"] = 1
                         st.warning(f"Saída #{item.get('id')} rejeitada. O saldo em estoque permaneceu inalterado.")
                         st.rerun()
+
+
+# -----------------------------------------------------------------------------
+# CHANGE 05: ALERTAS DE ESTOQUE E REPOSIÇÃO
+# -----------------------------------------------------------------------------
+elif menu_option == "🔔 Alertas & Reposição (Change 05)":
+    st.subheader("🔔 Alertas de Estoque & Sugestões de Reposição")
+    st.caption(
+        "Monitoramento de ruptura (LOW_STOCK) e inatividade (INACTIVE), ciclo de vida dos "
+        "alertas e sugestões de reposição. Toda regra é calculada no backend Xano — esta tela "
+        "apenas consome a API e apresenta o resultado."
+    )
+
+    # Sem mock: se o backend não estiver acessível, é estado de erro explícito.
+    if not (xano_client and os.getenv("XANO_BASE_URL")):
+        st.error(
+            "Serviço Xano não configurado ou indisponível. Defina a URL do backend para usar "
+            "este módulo — não há dados simulados nesta seção."
+        )
+        st.stop()
+
+    # ------------------------------------------------------------------
+    # Helpers de formatação (timestamps do Xano vêm em epoch ms)
+    # ------------------------------------------------------------------
+    def _alert_formatar_ts(ts_ms):
+        """Converte epoch ms do Xano para data legível; '—' se ausente."""
+        try:
+            return datetime.fromtimestamp(int(ts_ms) / 1000).strftime("%d/%m/%Y %H:%M")
+        except (TypeError, ValueError, OSError):
+            return "—"
+
+    def _alert_dias_sem_movimentar(ts_ms):
+        """Dias decorridos desde a última movimentação (None se nunca houve)."""
+        try:
+            return max((datetime.now() - datetime.fromtimestamp(int(ts_ms) / 1000)).days, 0)
+        except (TypeError, ValueError, OSError):
+            return None
+
+    # ------------------------------------------------------------------
+    # Usuário requisitante (todo endpoint exige user_id; perfil é validado no backend)
+    # ------------------------------------------------------------------
+    col_uid1, col_uid2 = st.columns([1, 3])
+    with col_uid1:
+        alert_user_id = st.number_input(
+            "ID do usuário requisitante:",
+            min_value=1, value=1, step=1, key="alert_user_id_input",
+        )
+    with col_uid2:
+        st.info(
+            "Leitura: todos os perfis. Avaliação e transições de alerta: Gestor, Estoquista "
+            "ou admin. Parâmetros de estoque: Gestor ou admin. A validação é feita no backend."
+        )
+
+    # ------------------------------------------------------------------
+    # Resumo geral (KPIs + perfil do ator, usado para esconder ações na UI)
+    # ------------------------------------------------------------------
+    try:
+        with st.spinner("Carregando resumo de alertas..."):
+            alert_summary = xano_client.get_alerts_summary(int(alert_user_id))
+    except Exception as exc:
+        st.error(f"Falha ao carregar o resumo de alertas: {exc}")
+        st.stop()
+
+    actor_role = alert_summary.get("actor_role", "")
+    pode_avaliar = actor_role in ("Gestor", "Estoquista", "admin")
+    pode_configurar = actor_role in ("Gestor", "admin")
+
+    st.markdown("##### Indicadores do Monitoramento")
+    kpi_cols = st.columns(5)
+    kpi_cols[0].metric("🚨 Alertas Ativos", alert_summary.get("alertas_ativos", 0))
+    kpi_cols[1].metric("🔥 Alertas Críticos", alert_summary.get("alertas_criticos", 0))
+    kpi_cols[2].metric("🕓 Produtos Inativos", alert_summary.get("produtos_inativos", 0))
+    kpi_cols[3].metric("⚙️ Parâmetros Incompletos", alert_summary.get("parametros_incompletos", 0))
+    kpi_cols[4].metric("📦 Produtos Monitorados", alert_summary.get("produtos_monitorados", 0))
+
+    st.caption(
+        f"Requisitante: usuário #{alert_summary.get('actor_id', alert_user_id)} — "
+        f"perfil **{actor_role or 'desconhecido'}** | "
+        f"avaliação de alertas: {'✅ permitida' if pode_avaliar else '🚫 restrita'} | "
+        f"parâmetros de estoque: {'✅ permitida' if pode_configurar else '🚫 restrita'}"
+    )
+
+    # ------------------------------------------------------------------
+    # Avaliação idempotente de alertas (não altera saldo nem cria movimentação)
+    # ------------------------------------------------------------------
+    col_av1, col_av2 = st.columns([2, 3])
+    with col_av1:
+        if pode_avaliar:
+            if st.button("🔄 Avaliar Alertas Agora", type="primary", key="btn_avaliar_alertas"):
+                try:
+                    with st.spinner("Avaliando produtos monitorados..."):
+                        resultado = xano_client.evaluate_alerts(int(alert_user_id))
+                    st.success(
+                        f"Avaliação concluída: {resultado.get('avaliados', 0)} produto(s) avaliados — "
+                        f"{resultado.get('criados', 0)} alerta(s) criado(s), "
+                        f"{resultado.get('resolvidos', 0)} auto-resolvido(s), "
+                        f"{resultado.get('silenciados', 0)} silenciado(s)."
+                    )
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Falha na avaliação de alertas: {exc}")
+        else:
+            st.warning(
+                "Seu perfil não pode executar a avaliação de alertas "
+                "(requer Gestor, Estoquista ou admin — validado no backend)."
+            )
+
+    st.divider()
+
+    tab_alertas, tab_sem_mov, tab_sugestoes, tab_parametros = st.tabs([
+        "🚨 Alertas",
+        "🕓 Sem Movimentação",
+        "📦 Sugestões de Reposição",
+        "⚙️ Parâmetros de Estoque",
+    ])
+
+    # ------------------------------------------------------------------
+    # ABA 1 — ALERTAS (filtros, cards e transições do ciclo de vida)
+    # ------------------------------------------------------------------
+    with tab_alertas:
+        st.markdown("#### Ciclo de Vida dos Alertas")
+        st.caption(
+            "Transições manuais permitidas: Ativo → EmAcompanhamento e "
+            "Ativo/EmAcompanhamento → Resolvido. Resolvido é estado final e o histórico é sempre preservado."
+        )
+
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            filtro_status = st.selectbox(
+                "Status:", ["Todos", "Ativo", "EmAcompanhamento", "Resolvido"], key="alert_filtro_status"
+            )
+        with col_f2:
+            filtro_tipo = st.selectbox(
+                "Tipo:", ["Todos", "LOW_STOCK", "INACTIVE"], key="alert_filtro_tipo"
+            )
+        with col_f3:
+            filtro_pid = st.number_input(
+                "ID do produto (0 = todos):", min_value=0, value=0, step=1, key="alert_filtro_pid"
+            )
+
+        try:
+            with st.spinner("Carregando alertas..."):
+                alertas = xano_client.list_alerts(
+                    int(alert_user_id),
+                    status=None if filtro_status == "Todos" else filtro_status,
+                    alert_type=None if filtro_tipo == "Todos" else filtro_tipo,
+                    product_id=int(filtro_pid) or None,
+                )
+        except Exception as exc:
+            st.error(f"Falha ao carregar alertas: {exc}")
+            alertas = None
+
+        if alertas is not None:
+            if not alertas:
+                st.info("Nenhum alerta encontrado para os filtros selecionados.")
+            for alerta in alertas:
+                status_atual = alerta.get("status", "")
+                tipo_alerta = alerta.get("alert_type", "")
+                tipo_label = "Estoque Baixo" if tipo_alerta == "LOW_STOCK" else "Sem Movimentação"
+                cor_bloco = {
+                    "critico": "#DC2626",
+                    "insuficiente": "#D97706",
+                    "regular": "#059669",
+                }.get(str(alerta.get("criticality", "")).lower(), "#64748B")
+                classe_badge = {
+                    "Ativo": "status-danger",
+                    "EmAcompanhamento": "status-warning",
+                    "Resolvido": "status-success",
+                }.get(status_atual, "status-info")
+
+                resolvido_html = ""
+                if status_atual == "Resolvido":
+                    resolvido_html = (
+                        f"<div style='margin-top:4px; font-size:0.82rem; color:#059669;'>"
+                        f"Resolvido em {_alert_formatar_ts(alerta.get('resolved_at'))} "
+                        f"(motivo: {alerta.get('resolution') or '—'})</div>"
+                    )
+
+                st.markdown(
+                    f"""
+                    <div class="alert-card" style="border-left-color: {cor_bloco};">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <span style="font-weight:700;">#{alerta.get('id')} — {alerta.get('produto_nome', 'Produto')}</span>
+                                <span style="color:#64748b;"> ({alerta.get('produto_sku', '—')})</span>
+                            </div>
+                            <div>
+                                <span class="status-badge {classe_badge}">{status_atual}</span>
+                                &nbsp;
+                                <span class="status-badge status-info">{tipo_label}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top:6px; font-size:0.88rem; color:#334155;">
+                            <b>Saldo observado:</b> {alerta.get('observed_stock', '—')} un.
+                            &nbsp;|&nbsp; <b>Mínimo observado:</b> {alerta.get('observed_min_stock', '—')} un.
+                            &nbsp;|&nbsp; <b>Classificação:</b> {alerta.get('criticality', '—')}
+                        </div>
+                        <div style="margin-top:4px; font-size:0.82rem; color:#64748b;">
+                            Detectado em: {_alert_formatar_ts(alerta.get('detected_at'))}
+                            &nbsp;|&nbsp; Status atualizado em: {_alert_formatar_ts(alerta.get('status_updated_at'))}
+                        </div>
+                        {resolvido_html}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                if pode_avaliar and status_atual != "Resolvido":
+                    col_a1, col_a2, _ = st.columns([1, 1, 4])
+                    with col_a1:
+                        if status_atual == "Ativo":
+                            if st.button("👀 Acompanhar", key=f"btn_acomp_{alerta.get('id')}"):
+                                try:
+                                    xano_client.update_alert_status(
+                                        int(alerta.get("id")), "EmAcompanhamento", int(alert_user_id)
+                                    )
+                                    st.success(f"Alerta #{alerta.get('id')} movido para EmAcompanhamento.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error(f"Falha ao atualizar o alerta: {exc}")
+                    with col_a2:
+                        if st.button("✅ Resolver", key=f"btn_resolver_{alerta.get('id')}"):
+                            try:
+                                xano_client.update_alert_status(
+                                    int(alerta.get("id")), "Resolvido", int(alert_user_id)
+                                )
+                                st.success(f"Alerta #{alerta.get('id')} resolvido (histórico preservado).")
+                                st.rerun()
+                            except Exception as exc:
+                                st.error(f"Falha ao resolver o alerta: {exc}")
+
+    # ------------------------------------------------------------------
+    # ABA 2 — PRODUTOS SEM MOVIMENTAÇÃO
+    # ------------------------------------------------------------------
+    with tab_sem_mov:
+        st.markdown("#### Produtos Sem Movimentação Recente")
+        st.caption(
+            "**Inativo**: tem histórico, mas parou de se movimentar além da janela (gera alerta INACTIVE). "
+            "**Sem Histórico**: nunca teve movimentação (não gera alerta). "
+            "A janela segue a prioridade: informada aqui > configurada no produto > 30 dias."
+        )
+
+        col_j1, col_j2 = st.columns(2)
+        with col_j1:
+            janela_dias = st.number_input(
+                "Janela de inatividade em dias (vazio = padrão do produto):",
+                min_value=1, value=None, step=1, key="alert_janela_dias",
+            )
+        with col_j2:
+            incluir_sem_hist = st.checkbox(
+                "Incluir produtos sem histórico", value=True, key="alert_incluir_sem_hist"
+            )
+
+        try:
+            with st.spinner("Verificando movimentações..."):
+                inativos = xano_client.list_inactive_products(
+                    int(alert_user_id),
+                    inactivity_days=int(janela_dias) if janela_dias else None,
+                    incluir_sem_historico=bool(incluir_sem_hist),
+                )
+        except Exception as exc:
+            st.error(f"Falha ao listar produtos sem movimentação: {exc}")
+            inativos = None
+
+        if inativos is not None:
+            if not inativos:
+                st.info("Nenhum produto encontrado para a janela selecionada.")
+            else:
+                linhas_inat = []
+                for item in inativos:
+                    dias = _alert_dias_sem_movimentar(item.get("ultima_movimentacao"))
+                    situacao = item.get("situacao", "")
+                    linhas_inat.append({
+                        "Produto ID": item.get("product_id"),
+                        "SKU": item.get("sku"),
+                        "Nome": item.get("nome"),
+                        "Categoria": item.get("categoria"),
+                        "Saldo": item.get("saldo"),
+                        "Situação": "🕓 Inativo" if situacao == "Inativo" else "❓ Sem Histórico",
+                        "Última movimentação": _alert_formatar_ts(item.get("ultima_movimentacao")),
+                        "Dias sem movimentar": dias if dias is not None else "—",
+                        "Janela (dias)": item.get("janela_dias"),
+                    })
+                st.dataframe(linhas_inat, use_container_width=True)
+
+    # ------------------------------------------------------------------
+    # ABA 3 — SUGESTÕES DE REPOSIÇÃO (somente recomendações)
+    # ------------------------------------------------------------------
+    with tab_sugestoes:
+        st.markdown("#### Sugestões de Reposição")
+        st.caption(
+            "Sugestão = `max(0, estoque alvo − saldo atual)`. Sem estoque alvo configurado a "
+            "sugestão vem vazia e o produto é sinalizado com parâmetros incompletos. "
+            "É apenas uma recomendação — nenhuma compra ou entrada é criada a partir daqui."
+        )
+
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            filtro_cat = st.text_input(
+                "Filtrar por categoria (vazio = todas):", value="", key="alert_filtro_cat"
+            )
+        with col_s2:
+            filtro_rep_pid = st.number_input(
+                "ID do produto (0 = todos):", min_value=0, value=0, step=1, key="alert_filtro_rep_pid"
+            )
+
+        try:
+            with st.spinner("Carregando sugestões..."):
+                sugestoes = xano_client.list_replenishment(
+                    int(alert_user_id),
+                    category=filtro_cat.strip() or None,
+                    product_id=int(filtro_rep_pid) or None,
+                )
+        except Exception as exc:
+            st.error(f"Falha ao carregar sugestões: {exc}")
+            sugestoes = None
+
+        if sugestoes is not None:
+            incompletos = [item for item in sugestoes if item.get("parametros_incompletos")]
+            if incompletos:
+                st.warning(
+                    f"{len(incompletos)} produto(s) sem estoque alvo configurado — a sugestão de "
+                    "reposição fica vazia até o Gestor definir o parâmetro na aba de Parâmetros de Estoque."
+                )
+
+            if not sugestoes:
+                st.info("Nenhum produto encontrado para os filtros selecionados.")
+            else:
+                total_unidades = 0
+                total_investimento = 0.0
+                crit_map = {
+                    "critico": "🔴 Crítico",
+                    "insuficiente": "🟡 Insuficiente",
+                    "regular": "🟢 Regular",
+                }
+                linhas_sug = []
+                for item in sugestoes:
+                    sug = item.get("sugestao")
+                    custo = item.get("custo_estimado") or 0.0
+                    if isinstance(sug, int):
+                        total_unidades += sug
+                        total_investimento += custo
+                    linhas_sug.append({
+                        "Produto ID": item.get("product_id"),
+                        "SKU": item.get("sku"),
+                        "Nome": item.get("nome"),
+                        "Categoria": item.get("categoria"),
+                        "Saldo": item.get("saldo"),
+                        "Mínimo": item.get("min_stock"),
+                        "Alvo": item.get("target_stock") if item.get("target_stock") is not None else "—",
+                        "Classificação": crit_map.get(str(item.get("classificacao", "")).lower(), "—"),
+                        "Sugestão (un)": sug if sug is not None else "sem alvo",
+                        "Custo Estimado": f"R$ {custo:,.2f}",
+                    })
+                st.dataframe(linhas_sug, use_container_width=True)
+
+                col_t1, col_t2 = st.columns(2)
+                col_t1.metric("Total Sugerido (un.)", total_unidades)
+                col_t2.metric("Investimento Estimado", f"R$ {total_investimento:,.2f}")
+
+    # ------------------------------------------------------------------
+    # ABA 4 — PARÂMETROS DE ESTOQUE (restrito a Gestor/admin)
+    # ------------------------------------------------------------------
+    with tab_parametros:
+        st.markdown("#### Configurar Parâmetros de Estoque")
+        if not pode_configurar:
+            st.warning(
+                "Seu perfil não pode alterar parâmetros de estoque "
+                "(requer Gestor ou admin — validado no backend)."
+            )
+        else:
+            st.caption(
+                "Somente os campos preenchidos são alterados; os demais preservam o valor atual. "
+                "Deixe um campo vazio para não alterá-lo."
+            )
+
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                param_pid = st.number_input("ID do produto:", min_value=1, value=1, step=1, key="param_pid")
+                param_min = st.number_input(
+                    "Estoque mínimo (vazio = não alterar):",
+                    min_value=0, value=None, step=1, key="param_min",
+                )
+                param_definir_target = st.checkbox(
+                    "Definir/Atualizar estoque alvo", value=False, key="param_definir_target"
+                )
+                param_target = None
+                if param_definir_target:
+                    param_target = st.number_input(
+                        "Estoque alvo:", min_value=0, value=0, step=1, key="param_target",
+                    )
+            with col_p2:
+                param_janela = st.number_input(
+                    "Janela de inatividade em dias (vazio = não alterar):",
+                    min_value=1, value=None, step=1, key="param_janela",
+                )
+                param_alertas_on = st.checkbox(
+                    "Monitoramento de alertas ativo para o produto", value=True, key="param_alertas_on"
+                )
+
+            if st.button("💾 Salvar Parâmetros", type="primary", key="btn_salvar_parametros"):
+                try:
+                    with st.spinner("Salvando parâmetros..."):
+                        produto = xano_client.update_stock_parameters(
+                            int(param_pid),
+                            int(alert_user_id),
+                            min_stock=int(param_min) if param_min is not None else None,
+                            target_stock=int(param_target) if param_target is not None else None,
+                            inactivity_days=int(param_janela) if param_janela is not None else None,
+                            alerts_enabled=bool(param_alertas_on),
+                        )
+                    alvo_exibido = produto.get("target_stock")
+                    st.success(
+                        f"Parâmetros do produto #{param_pid} atualizados — "
+                        f"mínimo: {produto.get('min_stock')}, "
+                        f"alvo: {alvo_exibido if alvo_exibido is not None else '—'}, "
+                        f"janela: {produto.get('inactivity_days') or '—'} dia(s), "
+                        f"alertas: {'ativos' if produto.get('alerts_enabled') else 'inativos'}."
+                    )
+                except Exception as exc:
+                    st.error(f"Falha ao salvar parâmetros: {exc}")
+
 
 

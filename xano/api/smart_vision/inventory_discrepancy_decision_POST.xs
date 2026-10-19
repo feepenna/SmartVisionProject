@@ -20,7 +20,7 @@ query inventory_discrepancy_decision verb=POST {
       error = "Ação inválida. Use: approved, rejected ou recount_requested."
     }
 
-    // 2. Validar que o decisor é um gestor (proxy: role admin na tabela de usuários)
+    // 2. Validar que o decisor é um gestor (perfis de gestão: Gestor ou o legado admin)
     db.get user {
       field_name = "id"
       field_value = $input.decided_by
@@ -31,7 +31,7 @@ query inventory_discrepancy_decision verb=POST {
       error = "Usuário decisor não encontrado."
     }
 
-    precondition ($decider.role == "admin") {
+    precondition ($decider.role == "Gestor" || $decider.role == "admin") {
       error_type = "forbidden"
       error = "Apenas usuários com perfil de gestor podem aprovar, rejeitar ou solicitar recontagem de divergências."
     }

@@ -23,7 +23,7 @@ query inventory_apply_adjustments verb=POST {
       error = "Usuário aplicador não encontrado."
     }
 
-    precondition ($applier.role == "admin") {
+    precondition ($applier.role == "Gestor" || $applier.role == "admin") {
       error_type = "forbidden"
       error = "Apenas usuários com perfil de gestor podem aplicar ajustes de estoque."
     }

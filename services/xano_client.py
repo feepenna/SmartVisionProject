@@ -465,3 +465,279 @@ def process_outbound(outbound_id: int, user_id: int) -> Dict[str, Any]:
     payload = {"id": int(outbound_id), "user_id": int(user_id)}
     response = requests.post(_get_outbound_process_endpoint(), json=payload, timeout=10)
     return _handle_response(response)
+
+
+# ---------------------------------------------------------------------------
+# Alertas de estoque e reposição (Change 05)
+# ---------------------------------------------------------------------------
+
+_ALERT_STATUSES = ["Ativo", "EmAcompanhamento", "Resolvido"]
+_ALERT_TYPES = ["LOW_STOCK", "INACTIVE"]
+
+
+def _get_alerts_endpoint() -> str:
+    return _format_endpoint("alerts")
+
+
+def _get_alerts_evaluate_endpoint() -> str:
+    return _format_endpoint("alerts/evaluate")
+
+
+def _get_alerts_summary_endpoint() -> str:
+    return _format_endpoint("alerts/summary")
+
+
+def _get_alerts_inactive_endpoint() -> str:
+    return _format_endpoint("alerts/inactive")
+
+
+def _get_alerts_status_endpoint() -> str:
+    return _format_endpoint("alerts/status")
+
+
+def _get_replenishment_endpoint() -> str:
+    return _format_endpoint("replenishment")
+
+
+def _get_stock_parameters_endpoint() -> str:
+    return _format_endpoint("stock-parameters")
+
+
+def list_alerts(
+    user_id: int,
+    status: Optional[str] = None,
+    alert_type: Optional[str] = None,
+    product_id: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Listar alertas de estoque com filtros opcionais (mais recente primeiro).
+
+    Args:
+        user_id: Usuário requisitante (obrigatório; o backend valida o perfil).
+        status: Filtrar por status (``Ativo``, ``EmAcompanhamento`` ou ``Resolvido``).
+        alert_type: Filtrar por tipo (``LOW_STOCK`` ou ``INACTIVE``).
+        product_id: Filtrar por produto.
+
+    Returns:
+        Lista de alertas com dados do produto para exibição.
+    """
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+    if status is not None and status not in _ALERT_STATUSES:
+        raise ValueError("Status inválido. Use: " + ", ".join(_ALERT_STATUSES) + ".")
+    if alert_type is not None and alert_type not in _ALERT_TYPES:
+        raise ValueError("Tipo de alerta inválido. Use: " + ", ".join(_ALERT_TYPES) + ".")
+
+    params: Dict[str, str] = {"user_id": str(int(user_id))}
+    if status:
+        params["status"] = status
+    if alert_type:
+        params["alert_type"] = alert_type
+    if product_id:
+        params["product_id"] = str(int(product_id))
+    response = requests.get(_get_alerts_endpoint(), params=params, timeout=10)
+    return _handle_response(response)
+
+
+def get_alerts_summary(user_id: int) -> Dict[str, Any]:
+    """Consultar o resumo ao vivo do painel de alertas (KPIs e perfil do usuário).
+
+    Args:
+        user_id: Usuário requisitante (obrigatório; o backend valida o perfil).
+
+    Returns:
+        Dicionário com contagens de alertas, cobertura de parâmetros,
+        inativos ao vivo e ``actor_role`` para a UI esconder botões.
+    """
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+    response = requests.get(
+        _get_alerts_summary_endpoint(),
+        params={"user_id": str(int(user_id))},
+        timeout=10,
+    )
+    return _handle_response(response)
+
+
+def list_inactive_products(
+    user_id: int,
+    inactivity_days: Optional[int] = None,
+    incluir_sem_historico: bool = True,
+) -> List[Dict[str, Any]]:
+    """Listar produtos monitorados com a situação de movimentação.
+
+    Diferencia ``Inativo`` (histórico antigo) de ``SemHistorico`` (nunca
+    movimentado). A janela enviada prevalece sobre a do produto.
+
+    Args:
+        user_id: Usuário requisitante (obrigatório; o backend valida o perfil).
+        inactivity_days: Janela opcional em dias (>= 1).
+        incluir_sem_historico: Incluir produtos nunca movimentados (padrão True).
+
+    Returns:
+        Lista de produtos com ``situacao``, última movimentação (timestamp) e janela.
+    """
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+    if inactivity_days is not None and (not isinstance(inactivity_days, int) or inactivity_days < 1):
+        raise ValueError("A janela de inatividade deve ser um número inteiro maior ou igual a 1 dia.")
+
+    params: Dict[str, str] = {
+        "user_id": str(int(user_id)),
+        "incluir_sem_historico": "1" if incluir_sem_historico else "0",
+    }
+    if inactivity_days is not None:
+        params["inactivity_days"] = str(int(inactivity_days))
+    response = requests.get(_get_alerts_inactive_endpoint(), params=params, timeout=10)
+    return _handle_response(response)
+
+
+def evaluate_alerts(user_id: int) -> Dict[str, Any]:
+    """Executar a avaliação idempotente de alertas (LOW_STOCK e INACTIVE).
+
+    Abre alertas quando a condição passa a valer, auto-resolve quando normaliza
+    e respeita resoluções manuais (silenciamento). Não altera saldo nem cria
+    movimentação. Requer perfil Gestor/Estoquista (validado no backend).
+
+    Args:
+        user_id: Usuário requisitante (obrigatório).
+
+    Returns:
+        Contadores da execução: ``avaliados``, ``criados``, ``resolvidos``,
+        ``silenciados`` e criações por tipo.
+    """
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+    response = requests.post(
+        _get_alerts_evaluate_endpoint(),
+        json={"user_id": int(user_id)},
+        timeout=30,
+    )
+    return _handle_response(response)
+
+
+def update_alert_status(
+    alert_id: int,
+    status: str,
+    user_id: int,
+    notes: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Transição manual de status de um alerta (ciclo de vida do Change 05).
+
+    Transições permitidas: ``Ativo -> EmAcompanhamento``, ``Ativo -> Resolvido``
+    e ``EmAcompanhamento -> Resolvido``. ``Resolvido`` é estado final.
+
+    Args:
+        alert_id: ID do alerta.
+        status: Status destino (``Ativo``, ``EmAcompanhamento`` ou ``Resolvido``).
+        user_id: Usuário responsável pela transição (obrigatório ao resolver).
+        notes: Observação opcional de acompanhamento.
+
+    Returns:
+        Alerta atualizado.
+    """
+    if not alert_id:
+        raise ValueError("alert_id é obrigatório.")
+    if status not in _ALERT_STATUSES:
+        raise ValueError("Status inválido. Use: " + ", ".join(_ALERT_STATUSES) + ".")
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+
+    payload: Dict[str, Any] = {
+        "alert_id": int(alert_id),
+        "status": status,
+        "user_id": int(user_id),
+    }
+    if notes is not None:
+        if not str(notes).strip():
+            raise ValueError("As notas não podem ser vazias.")
+        payload["notes"] = str(notes).strip()
+    response = requests.post(_get_alerts_status_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def list_replenishment(
+    user_id: int,
+    category: Optional[str] = None,
+    product_id: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Consultar sugestões de reposição calculadas no backend.
+
+    A sugestão é ``max(0, target_stock - current_stock)``; sem alvo configurado
+    vem ``None`` com ``parametros_incompletos=True``. É apenas recomendação:
+    nenhuma compra, pedido ou entrada é criado.
+
+    Args:
+        user_id: Usuário requisitante (obrigatório; o backend valida o perfil).
+        category: Filtrar por categoria (opcional).
+        product_id: Filtrar por produto (opcional).
+
+    Returns:
+        Lista por produto com saldo, mínimo, alvo, classificação, sugestão,
+        sinalização de falta de parâmetros e custo estimado.
+    """
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+
+    params: Dict[str, str] = {"user_id": str(int(user_id))}
+    if category:
+        params["category"] = str(category).strip()
+    if product_id:
+        params["product_id"] = str(int(product_id))
+    response = requests.get(_get_replenishment_endpoint(), params=params, timeout=10)
+    return _handle_response(response)
+
+
+def update_stock_parameters(
+    product_id: int,
+    user_id: int,
+    min_stock: Optional[int] = None,
+    target_stock: Optional[int] = None,
+    inactivity_days: Optional[int] = None,
+    alerts_enabled: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """Configurar os parâmetros de estoque e alertas de um produto.
+
+    Somente os campos enviados são alterados; os demais preservam o valor atual.
+    Requer perfil Gestor (validado no backend).
+
+    Args:
+        product_id: ID do produto.
+        user_id: Usuário gestor responsável (obrigatório).
+        min_stock: Estoque mínimo (>= 0).
+        target_stock: Estoque alvo (>= 0 e >= min_stock efetivo).
+        inactivity_days: Janela de inatividade em dias (>= 1).
+        alerts_enabled: Ativar/desativar monitoramento do produto.
+
+    Returns:
+        Produto atualizado.
+    """
+    if not product_id:
+        raise ValueError("product_id é obrigatório.")
+    if not user_id:
+        raise ValueError("user_id é obrigatório.")
+    if min_stock is not None and (not isinstance(min_stock, int) or min_stock < 0):
+        raise ValueError("O estoque mínimo deve ser um número inteiro maior ou igual a zero.")
+    if target_stock is not None and (not isinstance(target_stock, int) or target_stock < 0):
+        raise ValueError("O estoque alvo deve ser um número inteiro maior ou igual a zero.")
+    if min_stock is not None and target_stock is not None and target_stock < min_stock:
+        raise ValueError("O estoque alvo deve ser maior ou igual ao estoque mínimo.")
+    if inactivity_days is not None and (not isinstance(inactivity_days, int) or inactivity_days < 1):
+        raise ValueError("A janela de inatividade deve ser um número inteiro maior ou igual a 1 dia.")
+    if alerts_enabled is not None and not isinstance(alerts_enabled, bool):
+        raise ValueError("alerts_enabled deve ser True ou False.")
+
+    payload: Dict[str, Any] = {
+        "product_id": int(product_id),
+        "user_id": int(user_id),
+    }
+    if min_stock is not None:
+        payload["min_stock"] = int(min_stock)
+    if target_stock is not None:
+        payload["target_stock"] = int(target_stock)
+    if inactivity_days is not None:
+        payload["inactivity_days"] = int(inactivity_days)
+    if alerts_enabled is not None:
+        # O backend não aceita booleano em input: envia 1/0.
+        payload["alerts_enabled"] = 1 if alerts_enabled else 0
+    response = requests.patch(_get_stock_parameters_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)

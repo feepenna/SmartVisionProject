@@ -50,11 +50,11 @@ Este documento apresenta o modelo conceitual consolidado do sistema **Smart Visi
     
 - **Responsabilidade**: Controlar saldo em tempo real, preços e localização na loja.
     
-- **Atributos**: SKU/Código, Nome, Categoria, Marca, Modelo, Preço de Custo/Venda, Saldo Atual, Estoque Mínimo e Localização Física.
+- **Atributos**: SKU/Código, Nome, Categoria, Marca, Modelo, Preço de Custo/Venda, Saldo Atual, Estoque Mínimo, Estoque Alvo (`target_stock`), Janela de Inatividade (`inactivity_days`) e Monitoramento de Alertas (`alerts_enabled`).
     
-- **Relacionamentos**: Possui Atributos Técnicos, participa de Entradas/Saídas, gera Alertas e registra Histórico de Movimentações.
+- **Relacionamentos**: Possui Atributos Técnicos, participa de Entradas/Saídas, gera Alertas e Sugestões de Reposição e registra Histórico de Movimentações.
     
-- **Regras**: Saldo não pode ficar negativo sem justificativa; definição de estoque mínimo é obrigatória.
+- **Regras**: Saldo não pode ficar negativo sem justificativa; definição de estoque mínimo é obrigatória. Produto recém-cadastrado nasce com `alerts_enabled = true`, sem alvo (`target_stock` nulo) e janela padrão de 30 dias; `target_stock`, quando definido, deve ser maior ou igual ao estoque mínimo.
     
 
 **Atributos Técnicos do Produto**
@@ -160,17 +160,32 @@ Este documento apresenta o modelo conceitual consolidado do sistema **Smart Visi
 - **Regras**: Somente usuários autorizados (perfil Gestor) podem decidir; toda decisão registra usuário, data, ação e justificativa; o histórico não é sobrescrito.
     
 
-**Alerta de Reposição**
+**Alerta de Estoque**
 
-- **Descrição**: Notificação automática sobre níveis de estoque.
+- **Descrição**: Notificação rastreável sobre níveis de estoque, aberta por avaliação idempotente das condições por produto (Change 05).
     
-- **Responsabilidade**: Sinalizar necessidade de compra (estoque mínimo) ou itens parados sem giro.
+- **Responsabilidade**: Sinalizar ruptura (`LOW_STOCK`, saldo ≤ mínimo) e produtos parados sem giro (`INACTIVE`, sem movimentação além da janela), controlando o ciclo de vida de cada condição.
     
-- **Atributos**: Tipo de Alerta, Urgência e Data de Detecção.
+- **Atributos**: Produto, Tipo (`LOW_STOCK` / `INACTIVE`), Status (`Ativo` / `EmAcompanhamento` / `Resolvido`), Criticidade (`critico` / `insuficiente` / `regular`), Saldo e Mínimo Observados na abertura, data de detecção, data da última mudança de status, data de resolução, origem da resolução (`manual` / `condicao_normalizada`), data em que a condição normalizou, usuários de abertura/atualização e observações.
     
-- **Relacionamentos**: Associado a um Produto Óptico.
+- **Estados e transições**: `Ativo` → `EmAcompanhamento`; `Ativo`/`EmAcompanhamento` → `Resolvido`. `Resolvido` é estado final; nenhum registro é apagado.
     
-- **Regras**: Disparado sempre que o saldo for menor ou igual ao Estoque Mínimo.
+- **Relacionamentos**: Associado a um Produto Óptico e aberto/atualizado por um Usuário.
+    
+- **Regras**: No máximo um alerta aberto por par (produto, tipo); a avaliação é idempotente (reavaliar sem mudança não duplica); quando a condição normaliza, o alerta aberto é auto-resolvido com `resolution = "condicao_normalizada"` e `condition_cleared_at` registrado; uma resolução manual com a condição ainda valendo silencia a reabertura do alerta até a condição normalizar; produto sem histórico nunca gera alerta `INACTIVE`; nenhum alerta altera saldo.
+
+**Sugestão de Reposição**
+
+- **Descrição**: Recomendação de quantidade a repor por produto, derivada exclusivamente do cadastro (não persistida como documento).
+    
+- **Responsabilidade**: Orientar a decisão de compra do gestor sem gerar compras, pedidos ou entradas.
+    
+- **Atributos**: Produto, Saldo atual, Estoque mínimo, Estoque alvo, Classificação de criticidade, Quantidade sugerida (`max(0, alvo − saldo)`), sinalizador de parâmetros incompletos e custo estimado.
+    
+- **Relacionamentos**: Derivada do Produto Óptico.
+    
+- **Regras**: Sem estoque alvo, a sugestão é vazia e o produto é sinalizado como parâmetros incompletos; a sugestão nunca é negativa e nunca provoca movimentação de estoque.
+
     
 
 **Pedido / Receita (Referência Externa)**
@@ -190,8 +205,8 @@ Este documento apresenta o modelo conceitual consolidado do sistema **Smart Visi
     
 - **Responsabilidade**: Autenticar ações e definir permissões na loja.
     
-- **Atributos**: Nome, E-mail/Login, Perfil (Gestor, Estoquista, Vendedor, Técnico) e Status.
+- **Atributos**: Nome, E-mail/Login, Perfil (Gestor, Estoquista, Vendedor, Técnico — além dos perfis legados `admin`, equivalente a Gestor, e `member`, equivalente a leitura) e Status.
     
-- **Relacionamentos**: Executa e assina Entradas, Saídas, Inventários e Históricos.
+- **Relacionamentos**: Executa e assina Entradas, Saídas, Inventários, Históricos, Alertas e Parâmetros de Estoque.
     
-- **Regras**: Ajustes manuais de saldo e aprovação de inventário exigem perfil autorizado.
+- **Regras**: Ajustes manuais de saldo e aprovação de inventário exigem perfil autorizado. No módulo de alertas (Change 05): leitura para todos os perfis; avaliação de alertas e mudança de status para Gestor, Estoquista e `admin`; configuração de parâmetros de estoque somente para Gestor e `admin`. A permissão é sempre validada no backend.

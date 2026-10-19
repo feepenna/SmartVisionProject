@@ -41,9 +41,9 @@ query outbound_status verb=PATCH {
           field_value = $input.user_id
         } as $actor
 
-        precondition ($actor != null && $actor.role == "admin") {
+        precondition ($actor != null && ($actor.role == "Gestor" || $actor.role == "admin")) {
           error_type = "accessdenied"
-          error = "Apenas gestor (admin) pode aprovar/rejeitar/alterar status desta operacao."
+          error = "Apenas gestor (Gestor/admin) pode aprovar/rejeitar/alterar status desta operacao."
         }
       }
     }

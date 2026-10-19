@@ -15,6 +15,13 @@ table product {
     int current_stock
     int min_stock
     text? location filters=trim
+
+    // Parâmetros de reposição e alertas (Change 05)
+    // target_stock nulo = sem alvo definido (sinalizado como falta de parâmetros)
+    int? target_stock
+    // inactivity_days nulo = janela padrão de 30 dias
+    int? inactivity_days
+    bool alerts_enabled?=true
   
     // Atributos técnicos ópticos (obrigatórios conceitualmente para lentes)
     decimal? sphere_power
