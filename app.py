@@ -410,13 +410,13 @@ with st.sidebar:
             "🏠 O Meu Painel",
             "🎯 As Minhas Metas & Comissões",
             "📢 Mural do RH & Comunicação",
-            "📂 Central do Colaborador (RH & Ponto)",
-            "🎓 Academia SmartVision (Treinos)",
-            "⚡ Atalhos Operacionais (PDV / OS / Receitas)",
-            "📦 Gestão de Estoque Auditado (Módulo Central)",
-            "📦 Inventário Físico & Conciliação (Change 03)",
-            "🚚 Saídas de Estoque (Change 04)",
-            "🔔 Alertas & Reposição (Change 05)"
+            "📂 Central do Colaborador",
+            "🎓 Academia SmartVision",
+            "⚡ Atalhos Operacionais",
+            "📦 Gestão de Estoque Auditado",
+            "📦 Inventário Físico & Conciliação",
+            "🚚 Saídas de Estoque",
+            "🔔 Alertas & Reposição"
         ],
         index=0
     )
@@ -800,7 +800,7 @@ elif menu_option == "📢 Mural do RH & Comunicação":
 # -----------------------------------------------------------------------------
 # SEÇÃO 4: CENTRAL DO COLABORADOR (RH, DOCUMENTOS & HORÁRIOS - CHANGE 4)
 # -----------------------------------------------------------------------------
-elif menu_option == "📂 Central do Colaborador (RH & Ponto)":
+elif menu_option == "📂 Central do Colaborador":
     st.subheader("📂 Central do Colaborador: Folha, Ponto & Solicitações")
     st.markdown("Acesse seus comprovantes de rendimento, controle seu saldo de banco de horas e envie pedidos formais ao RH.")
 
@@ -916,7 +916,7 @@ Status: Autenticado digitalmente
 # -----------------------------------------------------------------------------
 # SEÇÃO 5: ACADEMIA SMARTVISION (TREINOS & GUIA DE LENTES - CHANGE 5)
 # -----------------------------------------------------------------------------
-elif menu_option == "🎓 Academia SmartVision (Treinos)":
+elif menu_option == "🎓 Academia SmartVision":
     st.subheader("🎓 Academia SmartVision & Guia Técnico de Lentes")
     st.markdown("Consulte a tabela comparativa de materiais e especialize-se com microlearnings rápidos de alto impacto.")
 
@@ -1025,7 +1025,7 @@ elif menu_option == "🎓 Academia SmartVision (Treinos)":
 # -----------------------------------------------------------------------------
 # SEÇÃO 6: ATALHOS OPERACIONAIS (PDV / RECEITAS / OS - CHANGE 6)
 # -----------------------------------------------------------------------------
-elif menu_option == "⚡ Atalhos Operacionais (PDV / OS / Receitas)":
+elif menu_option == "⚡ Atalhos Operacionais":
     st.subheader("⚡ Atalhos Operacionais do Consultor")
     st.markdown("Acesse diretamente as rotinas mais frequentes da ótica com poucos cliques.")
 
@@ -1092,7 +1092,7 @@ elif menu_option == "⚡ Atalhos Operacionais (PDV / OS / Receitas)":
 # -----------------------------------------------------------------------------
 # SEÇÃO 7: GESTÃO DE ESTOQUE AUDITADO & REPOSIÇÃO (SMARTVISION CORE)
 # -----------------------------------------------------------------------------
-elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
+elif menu_option == "📦 Gestão de Estoque Auditado":
     st.subheader("📦 Módulo de Estoque Auditado & Reposição (Replenishment)")
     st.info("💡 **Conformidade Crítica**: Todas as entradas e saídas exigem registro prévio de auditoria na tabela `stock_movement` e validação estrita contra saldo negativo.")
 
@@ -1230,7 +1230,7 @@ elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
         st.markdown("#### 🚨 Painel de Reposição & Prevenção de Rupturas (Replenishment)")
         st.info(
             "A gestão de alertas e sugestões de reposição foi centralizada na seção "
-            "**🔔 Alertas & Reposição (Change 05)** no menu lateral, que consome o backend "
+            "**🔔 Alertas & Reposição** no menu lateral, que consome o backend "
             "(`/smart_vision/replenishment` e `/smart_vision/alerts`) em vez de calcular "
             "valores no cliente, conforme AGENTS.md (regra 5.2 — lógica fica no backend)."
         )
@@ -1239,7 +1239,7 @@ elif menu_option == "📦 Gestão de Estoque Auditado (Módulo Central)":
 # -----------------------------------------------------------------------------
 # CHANGE 03: INVENTÁRIO FÍSICO & CONCILIAÇÃO DE ESTOQUE
 # -----------------------------------------------------------------------------
-elif menu_option == "📦 Inventário Físico & Conciliação (Change 03)":
+elif menu_option == "📦 Inventário Físico & Conciliação":
     st.subheader("📦 Inventário Físico & Conciliação de Estoque")
     st.caption("Fluxo de ponta a ponta: abertura → contagem física → conciliação → aprovação do gestor → aplicação do ajuste (reutiliza o ledger de auditoria da Change 02).")
 
@@ -1720,7 +1720,7 @@ elif menu_option == "📦 Inventário Físico & Conciliação (Change 03)":
                     </div>
                     """, unsafe_allow_html=True)
 
-elif menu_option == "🚚 Saídas de Estoque (Change 04)":
+elif menu_option == "🚚 Saídas de Estoque":
     st.markdown('<div class="main-header">🚚 Gestão de Saídas de Estoque (Outbound Operations)</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Registro e processamento de saídas (Venda, Laboratório, Perda, Operacional) com bloqueio de saldo negativo e auditoria prévia.</div>', unsafe_allow_html=True)
 
@@ -2122,7 +2122,7 @@ elif menu_option == "🚚 Saídas de Estoque (Change 04)":
 # -----------------------------------------------------------------------------
 # CHANGE 05: ALERTAS DE ESTOQUE E REPOSIÇÃO
 # -----------------------------------------------------------------------------
-elif menu_option == "🔔 Alertas & Reposição (Change 05)":
+elif menu_option == "🔔 Alertas & Reposição":
     st.subheader("🔔 Alertas de Estoque & Sugestões de Reposição")
     st.caption(
         "Monitoramento de ruptura (LOW_STOCK) e inatividade (INACTIVE), ciclo de vida dos "
