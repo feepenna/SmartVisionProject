@@ -741,3 +741,67 @@ def update_stock_parameters(
         payload["alerts_enabled"] = 1 if alerts_enabled else 0
     response = requests.patch(_get_stock_parameters_endpoint(), json=payload, timeout=10)
     return _handle_response(response)
+
+
+# ---------------------------------------------------------------------------
+# Autenticação (Change 06: Login e Autenticação)
+# ---------------------------------------------------------------------------
+
+def _get_auth_login_endpoint() -> str:
+    """Resolve endpoint de login do Xano Authentication group.
+
+    O grupo Authentication é servido na raiz do ``XANO_BASE_URL``
+    (``{base}/auth/login``), conforme o padrão de quick-start do Xano e o
+    demo page em ``xano/api/authentication`` — diferente do grupo Smart Vision,
+    que é servido sob ``{base}/smart_vision/``.
+    """
+    return f"{get_base_url()}/auth/login"
+
+
+def _get_auth_me_endpoint() -> str:
+    """Resolve endpoint auth/me do Xano Authentication group (raiz da API)."""
+    return f"{get_base_url()}/auth/me"
+
+
+def login(email: str, password: str) -> Dict[str, Any]:
+    """Autenticar usuário no backend Xano e retornar token e dados do usuário.
+
+    Args:
+        email: E-mail/login do usuário.
+        password: Senha em texto plano (nunca armazenada localmente).
+
+    Returns:
+        Dicionário com ``authToken`` e ``user_id`` retornados pelo Xano.
+
+    Raises:
+        ValueError: Se email ou senha estiverem vazios.
+        requests.HTTPError: Se as credenciais forem inválidas ou houver falha de comunicação.
+    """
+    if not email or not str(email).strip():
+        raise ValueError("Informe seu usuário.")
+    if not password or not str(password):
+        raise ValueError("Informe sua senha.")
+
+    payload = {
+        "email": str(email).strip().lower(),
+        "password": str(password),
+    }
+    response = requests.post(_get_auth_login_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def get_me(auth_token: str) -> Dict[str, Any]:
+    """Obter dados do usuário autenticado a partir do token de sessão.
+
+    Args:
+        auth_token: Token de autenticação gerado pelo Xano no login.
+
+    Returns:
+        Dicionário com dados do usuário (id, name, email, account_id, role, etc.).
+
+    Raises:
+        requests.HTTPError: Se o token for inválido ou expirado.
+    """
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    response = requests.get(_get_auth_me_endpoint(), headers=headers, timeout=10)
+    return _handle_response(response)

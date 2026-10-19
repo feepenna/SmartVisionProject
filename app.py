@@ -26,8 +26,10 @@ if os.path.exists(_env_file):
 # Tentativa de importação do serviço Xano para o módulo de estoque
 try:
     from services import xano_client
+    from services import auth_service
 except Exception:
     xano_client = None
+    auth_service = None
 
 # Configuração da Página
 st.set_page_config(
@@ -336,6 +338,193 @@ st.markdown("""
     .alert-critico { border-left-color: #DC2626; }
     .alert-insuficiente { border-left-color: #D97706; }
     .alert-regular { border-left-color: #059669; }
+
+    /* ===== Change 06: Tela de Login ===== */
+    .login-page {
+        background: #F1F2F4;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    .login-card {
+        background: #FFFFFF;
+        width: 100%;
+        max-width: 530px;
+        border-radius: 16px;
+        box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.12);
+        padding: 40px 32px;
+        box-sizing: border-box;
+    }
+    .login-logo {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 24px;
+    }
+    .login-logo .smart { color: #3942F6; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
+    .login-logo .vision { color: #F8B807; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
+    .login-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0F172A;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.25px;
+    }
+    .login-subtitle {
+        font-size: 0.95rem;
+        color: #64748B;
+        margin: 0 0 28px 0;
+        font-weight: 400;
+    }
+    .login-field {
+        margin-bottom: 16px;
+    }
+    .login-field label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+    .login-field input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #D1D5DB;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        color: #111827;
+        box-sizing: border-box;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .login-field input:focus {
+        border-color: #18181B;
+        box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.10);
+    }
+    .login-field input::placeholder {
+        color: #9CA3AF;
+    }
+    .login-toggle {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: #52525B;
+        font-weight: 600;
+        padding: 0;
+        margin-top: 6px;
+        text-align: right;
+        width: 100%;
+    }
+    .login-toggle:hover {
+        color: #18181B;
+    }
+    .login-btn {
+        width: 100%;
+        background: #18181B;
+        color: #FFFFFF;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 20px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        margin-top: 8px;
+        transition: background 0.2s;
+    }
+    .login-btn:hover:not(:disabled) {
+        background: #27272A;
+    }
+    .login-btn:disabled {
+        background: #A1A1AA;
+        cursor: not-allowed;
+    }
+    .login-btn.loading {
+        position: relative;
+        color: transparent !important;
+    }
+    .login-btn.loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 18px;
+        height: 18px;
+        margin: -9px 0 0 -9px;
+        border: 2px solid #FFFFFF;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: login-spin 0.8s linear infinite;
+    }
+    @keyframes login-spin {
+        to { transform: rotate(360deg); }
+    }
+    .login-error {
+        background: #FEE2E2;
+        border: 1px solid #FCA5A5;
+        color: #991B1B;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        margin-top: 16px;
+        font-weight: 500;
+    }
+    .login-dev {
+        margin-top: 28px;
+        padding-top: 20px;
+        border-top: 1px solid #E5E7EB;
+    }
+    .login-dev-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #6B7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 10px 0;
+    }
+    .login-dev-creds {
+        background: #F3F4F6;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-size: 0.85rem;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+    .login-dev-creds b { color: #111827; }
+    .login-divider {
+        display: flex;
+        align-items: center;
+        margin: 20px 0 12px 0;
+        color: #9CA3AF;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .login-divider::before, .login-divider::after {
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid #E5E7EB;
+    }
+    .login-divider:not(:first-child)::before { margin-right: 10px; }
+    .login-divider:not(:last-child)::after { margin-left: 10px; }
+
+    @media (max-width: 640px) {
+        .login-card {
+            padding: 28px 20px;
+            max-width: 100%;
+        }
+        .login-logo .smart, .login-logo .vision {
+            font-size: 1.5rem;
+        }
+        .login-title {
+            font-size: 1.35rem;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -345,11 +534,168 @@ st.markdown("""
 if "notices_read" not in st.session_state:
     st.session_state.notices_read = set()
 
+if "auth_token" not in st.session_state:
+    st.session_state.auth_token = None
+if "auth_user" not in st.session_state:
+    st.session_state.auth_user = None
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "login_error" not in st.session_state:
+    st.session_state.login_error = None
+if "login_username" not in st.session_state:
+    st.session_state.login_username = ""
+if "login_loading" not in st.session_state:
+    st.session_state.login_loading = False
+if "login_show_password" not in st.session_state:
+    st.session_state.login_show_password = False
+
 if "cert_issued" not in st.session_state:
     st.session_state.cert_issued = False
 
 if "rh_requests" not in st.session_state:
     st.session_state.rh_requests = []
+
+
+# -----------------------------------------------------------------------------
+# CHANGE 06: GATE DE AUTENTICAÇÃO — tela de login quando não autenticado
+# -----------------------------------------------------------------------------
+def _require_auth():
+    """Exibe a tela de login e interrompe a execução se o usuário não estiver autenticado."""
+    if not st.session_state.authenticated:
+        _render_login_screen()
+        st.stop()
+
+
+def _render_login_screen():
+    """Renderiza a tela de login moderna, minimalista e corporativa."""
+    st.markdown('<div class="login-page">', unsafe_allow_html=True)
+    st.markdown('<div class="login-card">', unsafe_allow_html=True)
+
+    # Logotipo SMARTVISION
+    st.markdown("""
+    <div class="login-logo">
+        <span class="smart">SMART</span><span class="vision">VISION</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Título e subtítulo
+    st.markdown('<h1 class="login-title">Acesso ao Sistema</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="login-subtitle">Entre com suas credenciais para continuar.</p>', unsafe_allow_html=True)
+
+    # Formulário de login
+    with st.form("login_form", clear_on_submit=False):
+        usuario = st.text_input(
+            "Usuário",
+            value=st.session_state.login_username,
+            placeholder="Digite seu usuário",
+            label_visibility="collapsed",
+            key="login_usuario_input",
+        )
+        senha_tipo = "text" if st.session_state.login_show_password else "password"
+        senha = st.text_input(
+            "Senha",
+            value="",
+            placeholder="Digite sua senha",
+            type=senha_tipo,
+            label_visibility="collapsed",
+            key="login_senha_input",
+        )
+        col_btn, col_toggle = st.columns([4, 1])
+        with col_btn:
+            entrar = st.form_submit_button(
+                "ENTRAR" if not st.session_state.login_loading else "…",
+                type="primary",
+                disabled=st.session_state.login_loading,
+                key="login_entrar_btn",
+            )
+        with col_toggle:
+            toggle_label = "🙈" if st.session_state.login_show_password else "👁️"
+            toggle_clicado = st.form_submit_button(
+                toggle_label,
+                help="Mostrar / ocultar senha",
+                key="login_toggle_senha",
+            )
+
+        if st.session_state.login_error:
+            st.markdown(
+                f'<div class="login-error">{st.session_state.login_error}</div>',
+                unsafe_allow_html=True,
+            )
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Área de credenciais fictícias (ambiente de desenvolvimento)
+    st.markdown("""
+    <div class="login-dev">
+        <div class="login-dev-title">Ambiente de Desenvolvimento</div>
+        <div class="login-dev-creds"><b>Gerente:</b> gerente@smartvision.com / Senha123!</div>
+        <div class="login-dev-creds"><b>Supervisor:</b> supervisor@smartvision.com / Senha123!</div>
+        <div class="login-dev-creds"><b>Vendedor:</b> vendedor@smartvision.com / Senha123!</div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Lógica de submissão do formulário
+    if toggle_clicado:
+        st.session_state.login_show_password = not st.session_state.login_show_password
+        st.rerun()
+    elif entrar:
+        _handle_login(usuario, senha)
+
+
+def _handle_login(usuario: str, senha: str):
+    """Processa o login: valida, autentica no backend e define a sessão.
+
+    Toda a lógica de validação, classificação de erros e proteção contra
+    tentativas repetidas vive em ``services/auth_service`` (testável e única
+    fonte das mensagens obrigatórias da Change 06).
+    """
+    st.session_state.login_error = None
+    st.session_state.login_loading = True
+
+    # Rate limiter por sessão (proteção contra tentativas repetidas)
+    if "login_rate_limiter" not in st.session_state:
+        st.session_state.login_rate_limiter = auth_service.RateLimiter()
+
+    try:
+        auth_token, user_data = auth_service.autenticar(
+            str(usuario or ""),
+            str(senha or ""),
+            st.session_state.login_rate_limiter,
+        )
+    except (ValueError, RuntimeError) as exc:
+        # Mensagens obrigatórias: campo vazio, credenciais inválidas
+        # ou bloqueio temporário por tentativas repetidas.
+        st.session_state.login_error = str(exc)
+        st.session_state.login_loading = False
+        st.session_state.login_username = str(usuario or "").strip()
+        st.rerun()
+        return
+    except Exception as exc:
+        # Falha de comunicação (mensagem já classificada pelo serviço).
+        # Fallback literal — não referenciar o serviço dentro do próprio handler.
+        st.session_state.login_error = str(exc) or (
+            "Não foi possível realizar o login agora. Tente novamente."
+        )
+        st.session_state.login_loading = False
+        st.session_state.login_username = str(usuario or "").strip()
+        st.rerun()
+        return
+
+    # Definir sessão autenticada (perfil vem exclusivamente do backend)
+    st.session_state.auth_token = auth_token
+    st.session_state.auth_user = user_data
+    st.session_state.authenticated = True
+    st.session_state.login_loading = False
+    st.session_state.login_error = None
+    st.session_state.login_username = str(usuario or "").strip()
+    st.rerun()
+
+
+# -----------------------------------------------------------------------------
+# Executar gate de autenticação antes de render qualquer página interna
+# -----------------------------------------------------------------------------
+_require_auth()
 
 # Base de Dados Simulada de Avisos
 MOCK_NOTICES = [
@@ -396,6 +742,46 @@ unread_count = len([n for n in MOCK_NOTICES if n["id"] not in st.session_state.n
 # -----------------------------------------------------------------------------
 # CHANGE 1: SIDEBAR & MENU DE NAVEGAÇÃO
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# CHANGE 06: Dados da sessão autenticada e redirecionamento por perfil
+# -----------------------------------------------------------------------------
+_MENU_OPTIONS = [
+    "🏠 O Meu Painel",
+    "🎯 As Minhas Metas & Comissões",
+    "📢 Mural do RH & Comunicação",
+    "📂 Central do Colaborador",
+    "🎓 Academia SmartVision",
+    "⚡ Atalhos Operacionais",
+    "📦 Gestão de Estoque Auditado",
+    "📦 Inventário Físico & Conciliação",
+    "🚚 Saídas de Estoque",
+    "🔔 Alertas & Reposição",
+]
+
+
+def _perfil_para_pagina_inicial(role: str) -> int:
+    """Retorna o índice da página inicial com base no perfil do usuário.
+
+    Perfis do backend Xano (tabela ``user``): ``Gestor``, ``Supervisor``,
+    ``Vendedor``, ``Estoquista``, ``Técnico`` e legados ``admin``/``member``.
+    """
+    r = (role or "").strip().lower()
+    if r in ("gestor", "gerente", "supervisor", "admin", "estoquista"):
+        return _MENU_OPTIONS.index("📦 Gestão de Estoque Auditado")
+    if r in ("vendedor", "member"):
+        return _MENU_OPTIONS.index("🚚 Saídas de Estoque")
+    if r in ("técnico", "tecnico"):
+        return _MENU_OPTIONS.index("📦 Gestão de Estoque Auditado")
+    return 0
+
+
+# Determinar índice inicial da navegação (apenas na primeira renderização autenticada)
+_default_index = 0
+if st.session_state.authenticated and "menu_index_set" not in st.session_state:
+    user_role = (st.session_state.auth_user or {}).get("role", "")
+    _default_index = _perfil_para_pagina_inicial(user_role)
+    st.session_state.menu_index_set = True
+
 with st.sidebar:
     st.markdown("""
         <div style="text-align: center; padding: 10px 0 20px 0;">
@@ -404,21 +790,38 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
+    # Informações do usuário autenticado
+    if st.session_state.authenticated and st.session_state.auth_user:
+        _user = st.session_state.auth_user
+        _user_name = _user.get("name") or _user.get("email") or "Usuário"
+        _user_role = _user.get("role") or "—"
+        st.markdown(f"""
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+            <div style="font-weight:700;color:#0F172A;font-size:0.95rem;margin-bottom:2px;">{_user_name}</div>
+            <div style="font-size:0.8rem;color:#3942F6;font-weight:600;">Perfil: {_user_role}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Sair / Logout", key="btn_logout", use_container_width=True):
+            st.session_state.auth_token = None
+            st.session_state.auth_user = None
+            st.session_state.authenticated = False
+            st.session_state.login_error = None
+            st.session_state.login_username = ""
+            st.session_state.login_loading = False
+            st.session_state.login_show_password = False
+            st.session_state.menu_index_set = False
+            st.rerun()
+    else:
+        st.markdown("""
+        <div style="font-size:0.8rem;color:#64748B;text-align:center;margin-bottom:12px;">
+            Acesso não autenticado
+        </div>
+        """, unsafe_allow_html=True)
+
     menu_option = st.radio(
         "Navegação Principal:",
-        options=[
-            "🏠 O Meu Painel",
-            "🎯 As Minhas Metas & Comissões",
-            "📢 Mural do RH & Comunicação",
-            "📂 Central do Colaborador",
-            "🎓 Academia SmartVision",
-            "⚡ Atalhos Operacionais",
-            "📦 Gestão de Estoque Auditado",
-            "📦 Inventário Físico & Conciliação",
-            "🚚 Saídas de Estoque",
-            "🔔 Alertas & Reposição"
-        ],
-        index=0
+        options=_MENU_OPTIONS,
+        index=_default_index if st.session_state.authenticated else 0
     )
 
     st.divider()
@@ -448,6 +851,16 @@ with st.sidebar:
 # HEADER SUPERIOR (BRANDING, SEARCH, NOTIFICAÇÕES & PROFILE CARD)
 # -----------------------------------------------------------------------------
 search_query = ""
+
+# Dados do usuário autenticado para o header
+_header_user_name = "Carlos Eduardo Silveira"
+_header_user_role = "Consultor Ótico Senior"
+if st.session_state.authenticated and st.session_state.auth_user:
+    _header_user_name = st.session_state.auth_user.get("name") or _header_user_name
+    _header_user_role = (st.session_state.auth_user.get("role") or "Usuário") + " — SmartVision"
+
+_header_avatar = (_header_user_name or "U")[0].upper() if _header_user_name else "U"
+
 header_html = f"""
 <div class="portal-header">
     <div>
@@ -459,10 +872,10 @@ header_html = f"""
             🔔 Mensagens Não Lidas: <span class="badge-yellow">{unread_count}</span>
         </div>
         <div class="profile-card">
-            <div class="profile-avatar">CS</div>
+            <div class="profile-avatar">{_header_avatar}</div>
             <div>
-                <div style="font-weight: 700; font-size: 0.95rem; color: #0F172A;">Carlos Eduardo Silveira</div>
-                <div style="font-size: 0.8rem; color: #3942F6; font-weight: 600;">Consultor Ótico Senior</div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: #0F172A;">{_header_user_name}</div>
+                <div style="font-size: 0.8rem; color: #3942F6; font-weight: 600;">{_header_user_role}</div>
                 <div style="font-size: 0.75rem; color: #64748B;">Loja Matriz — Shopping Paulista</div>
             </div>
         </div>
@@ -487,7 +900,10 @@ with search_col2:
 # SEÇÃO 1: O MEU PAINEL (VISÃO GERAL CONSOLIDADA)
 # -----------------------------------------------------------------------------
 if menu_option == "🏠 O Meu Painel":
-    st.subheader("👋 Bem-vindo de volta, Carlos!")
+    _welcome_name = "visitante"
+    if st.session_state.authenticated and st.session_state.auth_user:
+        _welcome_name = st.session_state.auth_user.get("name") or "usuário"
+    st.subheader(f"👋 Bem-vindo de volta, {_welcome_name}!")
     st.markdown("Aqui está o panorama atualizado das suas metas, avisos e atividades de hoje.")
 
     # Alerta Urgente em Destaque no Topo (Amarelo #F8B807)
