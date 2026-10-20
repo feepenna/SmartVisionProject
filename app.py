@@ -58,12 +58,14 @@ st.markdown("""
 
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #F1F2F4;
     }
 
-    .main .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 3rem;
-        background-color: var(--bg-color);
+    /* Oculta chrome do Streamlit (header, toolbar, deploy button) */
+    header, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], .stDeployButton {
+        display: none !important;
     }
 
     /* Header Superior */
@@ -338,194 +340,6 @@ st.markdown("""
     .alert-critico { border-left-color: #DC2626; }
     .alert-insuficiente { border-left-color: #D97706; }
     .alert-regular { border-left-color: #059669; }
-
-    /* ===== Change 06: Tela de Login ===== */
-    .login-page {
-        --border-color: #D4D4D8;
-        background: #F1F2F4;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        box-sizing: border-box;
-    }
-    .login-card {
-        background: #FFFFFF;
-        width: 100%;
-        max-width: 530px;
-        border-radius: 16px;
-        box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.12);
-        padding: 40px 32px;
-        box-sizing: border-box;
-    }
-    .login-logo {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 24px;
-    }
-    .login-logo .smart { color: #3942F6; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
-    .login-logo .vision { color: #F8B807; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
-    .login-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #0F172A;
-        margin: 0 0 8px 0;
-        letter-spacing: -0.25px;
-    }
-    .login-subtitle {
-        font-size: 0.95rem;
-        color: #64748B;
-        margin: 0 0 28px 0;
-        font-weight: 400;
-    }
-    .login-field {
-        margin-bottom: 16px;
-    }
-    .login-field label {
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--text-main);
-        margin-bottom: 6px;
-    }
-    .login-field input {
-        width: 100%;
-        padding: 12px 14px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 0.95rem;
-        color: var(--text-main);
-        box-sizing: border-box;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .login-field input:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(57, 66, 246, 0.10);
-    }
-    .login-field input::placeholder {
-        color: #A1A1AA;
-    }
-    .login-toggle {
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        font-weight: 600;
-        padding: 0;
-        margin-top: 6px;
-        text-align: right;
-        width: 100%;
-    }
-    .login-toggle:hover {
-        color: var(--text-main);
-    }
-    .login-btn {
-        width: 100%;
-        background: #18181B;
-        color: #FFFFFF;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 20px;
-        font-size: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        margin-top: 8px;
-        transition: background 0.2s;
-    }
-    .login-btn:hover:not(:disabled) {
-        background: #27272A;
-    }
-    .login-btn:disabled {
-        background: #A1A1AA;
-        cursor: not-allowed;
-    }
-    .login-btn.loading {
-        position: relative;
-        color: transparent !important;
-    }
-    .login-btn.loading::after {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 18px;
-        height: 18px;
-        margin: -9px 0 0 -9px;
-        border: 2px solid #FFFFFF;
-        border-top-color: transparent;
-        border-radius: 50%;
-        animation: login-spin 0.8s linear infinite;
-    }
-    @keyframes login-spin {
-        to { transform: rotate(360deg); }
-    }
-    .login-error {
-        background: #FEE2E2;
-        border: 1px solid #FCA5A5;
-        color: #991B1B;
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        margin-top: 16px;
-        font-weight: 500;
-    }
-    .login-dev {
-        margin-top: 28px;
-        padding-top: 20px;
-        border-top: 1px solid var(--border-color);
-    }
-    .login-dev-title {
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin: 0 0 10px 0;
-    }
-    .login-dev-creds {
-        background: #F3F4F6;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 12px 14px;
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
-    }
-    .login-dev-creds b { color: var(--text-main); }
-    .login-divider {
-        display: flex;
-        align-items: center;
-        margin: 20px 0 12px 0;
-        color: var(--text-secondary);
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .login-divider::before, .login-divider::after {
-        content: "";
-        flex: 1;
-        border-bottom: 1px solid var(--border-color);
-    }
-    .login-divider:not(:first-child)::before { margin-right: 10px; }
-    .login-divider:not(:last-child)::after { margin-left: 10px; }
-
-    @media (max-width: 640px) {
-        .login-card {
-            padding: 28px 20px;
-            max-width: 100%;
-        }
-        .login-logo .smart, .login-logo .vision {
-            font-size: 1.5rem;
-        }
-        .login-title {
-            font-size: 1.35rem;
-        }
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -545,8 +359,6 @@ if "login_error" not in st.session_state:
     st.session_state.login_error = None
 if "login_username" not in st.session_state:
     st.session_state.login_username = ""
-if "login_loading" not in st.session_state:
-    st.session_state.login_loading = False
 if "login_show_password" not in st.session_state:
     st.session_state.login_show_password = False
 
@@ -568,23 +380,182 @@ def _require_auth():
 
 
 def _render_login_screen():
-    """Renderiza a tela de login moderna, minimalista e corporativa."""
-    st.markdown('<div class="login-page">', unsafe_allow_html=True)
-    st.markdown('<div class="login-card">', unsafe_allow_html=True)
+    """Renderiza a tela de login.
 
-    # Logotipo SMARTVISION
+    Arquitetura: todo o conteúdo (logo, título, campos, botão, erro) fica
+    DENTRO de ``st.form`` — o elemento ``<form>`` do Streamlit é estilizado
+    via CSS como o card branco centralizado. O CSS é injetado aqui (e não
+    no bloco global) para que os overrides de ``.main .block-container``
+    não afetem a dashboard quando o usuário já estiver autenticado.
+    """
+    # CSS condicional: só existe quando a tela de login é renderizada
     st.markdown("""
-    <div class="login-logo">
-        <span class="smart">SMART</span><span class="vision">VISION</span>
-    </div>
+    <style>
+    /* Container principal: fundo cinza-claro, centraliza o card */
+    .main .block-container {
+        min-height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        background: transparent !important;
+        max-width: 100% !important;
+    }
+
+    /* O <form> do Streamlit vira o card branco de login */
+    [data-testid="stForm"] {
+        background: #FFFFFF !important;
+        border: none !important;
+        border-radius: 18px !important;
+        box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.12) !important;
+        padding: 40px 36px 36px 36px !important;
+        max-width: 530px !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+    }
+
+    /* Logo + título + subtítulo dentro do form */
+    .login-header {
+        text-align: center;
+        margin-bottom: 8px;
+    }
+    .login-header .smart { color: #3942F6; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
+    .login-header .vision { color: #F8B807; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
+    .login-header h1 { color: #18181B; font-size: 1.5rem; font-weight: 700; margin: 20px 0 6px 0; letter-spacing: -0.25px; }
+    .login-header p { color: #71717A; font-size: 0.95rem; margin: 0 0 24px 0; }
+
+    /* Ícones SVG nos campos */
+    .login-field-icon {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 2px;
+    }
+    .login-field-icon svg {
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+        color: #71717A;
+    }
+    .login-field-icon .field-label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #18181B;
+    }
+
+    /* Inputs de texto do Streamlit */
+    .stTextInput input {
+        border: 1px solid #D4D4D8 !important;
+        border-radius: 10px !important;
+        min-height: 44px !important;
+        font-size: 0.95rem !important;
+        color: #18181B !important;
+        background: #FFFFFF !important;
+        transition: border-color 0.2s, box-shadow 0.2s !important;
+    }
+    .stTextInput input::placeholder { color: #A1A1AA !important; }
+    .stTextInput input:focus {
+        border-color: #18181B !important;
+        box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.08) !important;
+    }
+    /* Oculta labels nativas (usamos labels customizados via st.markdown) */
+    .stTextInput label { display: none !important; }
+
+    /* Espaçamento entre widgets dentro do form */
+    [data-testid="stForm"] > div { margin-bottom: 8px; }
+
+    /* Botão ENTRAR (único botão do form) */
+    [data-testid="stForm"] button {
+        width: 100% !important;
+        background: #18181B !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 10px !important;
+        min-height: 46px !important;
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.5px !important;
+        transition: background 0.2s !important;
+    }
+    [data-testid="stForm"] button:hover {
+        background: #27272A !important;
+    }
+    [data-testid="stForm"] button[kind="primary"]:disabled {
+        background: #A1A1AA !important;
+        cursor: not-allowed !important;
+    }
+
+    /* Mensagem de erro */
+    .login-error {
+        background: #FEF2F2;
+        border-left: 3px solid #EF4444;
+        color: #991B1B;
+        font-size: 0.85rem;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    /* Credenciais de desenvolvimento (abaixo do card) */
+    .login-dev {
+        background: #FFFFFF;
+        border: 1px solid #D4D4D8;
+        border-radius: 12px;
+        padding: 14px 18px;
+        max-width: 530px;
+        width: 100%;
+        margin: 16px auto 0 auto;
+        box-sizing: border-box;
+    }
+    .login-dev-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #71717A;
+        margin-bottom: 6px;
+    }
+    .login-dev-creds {
+        font-size: 0.78rem;
+        color: #71717A;
+        line-height: 1.5;
+    }
+    .login-dev-creds b { color: #18181B; }
+
+    @media (max-width: 640px) {
+        [data-testid="stForm"] {
+            padding: 28px 20px !important;
+        }
+        .login-header .smart, .login-header .vision {
+            font-size: 1.5rem;
+        }
+        .login-header h1 {
+            font-size: 1.35rem;
+        }
+    }
+    </style>
     """, unsafe_allow_html=True)
 
-    # Título e subtítulo
-    st.markdown('<h1 class="login-title">Acesso ao Sistema</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="login-subtitle">Entre com suas credenciais para continuar.</p>', unsafe_allow_html=True)
-
-    # Formulário de login
     with st.form("login_form", clear_on_submit=False):
+
+        # --- Logo + título + subtítulo (dentro do form/card) ---
+        st.markdown("""
+        <div class="login-header">
+            <span class="smart">SMART</span><span class="vision">VISION</span>
+            <h1>Acesso ao Sistema</h1>
+            <p>Entre com suas credenciais para continuar.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # --- Campo Usuário ---
+        st.markdown("""
+        <div class="login-field-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span class="field-label">Usuário</span>
+        </div>
+        """, unsafe_allow_html=True)
         usuario = st.text_input(
             "Usuário",
             value=st.session_state.login_username,
@@ -592,7 +563,20 @@ def _render_login_screen():
             label_visibility="collapsed",
             key="login_usuario_input",
         )
+
+        # --- Campo Senha + toggle de visibilidade ---
         senha_tipo = "text" if st.session_state.login_show_password else "password"
+
+        st.markdown("""
+        <div class="login-field-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span class="field-label">Senha</span>
+        </div>
+        """, unsafe_allow_html=True)
+
         senha = st.text_input(
             "Senha",
             placeholder="Digite sua senha",
@@ -600,35 +584,22 @@ def _render_login_screen():
             label_visibility="collapsed",
             key="login_senha_input",
         )
-        col_btn, col_toggle = st.columns([4, 1])
-        with col_btn:
-            entrar = st.form_submit_button(
-                "ENTRAR" if not st.session_state.login_loading else "…",
-                type="primary",
-                disabled=st.session_state.login_loading,
-                key="login_entrar_btn",
-            )
-        with col_toggle:
-            toggle_label = "Mostrar" if st.session_state.login_show_password else "Ocultar"
-            toggle_clicado = st.form_submit_button(
-                toggle_label,
-                help="Mostrar / ocultar senha",
-                key="login_toggle_senha",
-            )
 
+        # --- Botão ENTRAR ---
+        entrar = st.form_submit_button(
+            "ENTRAR",
+            type="primary",
+            key="login_entrar_btn",
+        )
+
+        # --- Mensagem de erro (dentro do card) ---
         if st.session_state.login_error:
-            st.markdown(
-                f'<div class="login-error">{st.session_state.login_error}</div>',
-                unsafe_allow_html=True,
-            )
+            st.error(st.session_state.login_error)
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Área de credenciais fictícias (ambiente de desenvolvimento)
-    # Apenas demonstração: credenciais passam pelo fluxo real de autenticação
+    # --- Credenciais de desenvolvimento (abaixo do card, fora do form) ---
     if "DEV_CREDENTIALS_SHOWN" not in st.session_state:
         st.session_state.DEV_CREDENTIALS_SHOWN = True
-    
+
     if st.session_state.DEV_CREDENTIALS_SHOWN:
         st.markdown("""
         <div class="login-dev">
@@ -638,25 +609,15 @@ def _render_login_screen():
             <div class="login-dev-creds"><b>Vendedor:</b> vendedor@smartvision.com / Senha123!</div>
         </div>
         """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Lógica de submissão do formulário
-    if toggle_clicado:
-        st.session_state.login_show_password = not st.session_state.login_show_password
-        st.rerun()
-    elif entrar:
+    # --- Lógica de submissão ---
+    if entrar:
         _handle_login(usuario, senha)
 
 
 def _handle_login(usuario: str, senha: str):
-    """Processa o login: valida, autentica no backend e define a sessão.
-
-    Toda a lógica de validação, classificação de erros e proteção contra
-    tentativas repetidas vive em ``services/auth_service`` (testável e única
-    fonte das mensagens obrigatórias da Change 06).
-    """
+    """Processa o login: valida, autentica no backend e define a sessão."""
     st.session_state.login_error = None
-    st.session_state.login_loading = True
 
     # Rate limiter por sessão (proteção contra tentativas repetidas)
     if "login_rate_limiter" not in st.session_state:
@@ -669,29 +630,22 @@ def _handle_login(usuario: str, senha: str):
             st.session_state.login_rate_limiter,
         )
     except (ValueError, RuntimeError) as exc:
-        # Mensagens obrigatórias: campo vazio, credenciais inválidas
-        # ou bloqueio temporário por tentativas repetidas.
         st.session_state.login_error = str(exc)
-        st.session_state.login_loading = False
         st.session_state.login_username = str(usuario or "").strip()
         st.rerun()
         return
     except Exception as exc:
-        # Falha de comunicação (mensagem já classificada pelo serviço).
-        # Fallback literal — não referenciar o serviço dentro do próprio handler.
         st.session_state.login_error = str(exc) or (
             "Não foi possível realizar o login agora. Tente novamente."
         )
-        st.session_state.login_loading = False
         st.session_state.login_username = str(usuario or "").strip()
         st.rerun()
         return
 
-    # Definir sessão autenticada (perfil vem exclusivamente do backend)
+    # Sucesso — sessão definida (perfil vem do backend)
     st.session_state.auth_token = auth_token
     st.session_state.auth_user = user_data
     st.session_state.authenticated = True
-    st.session_state.login_loading = False
     st.session_state.login_error = None
     st.session_state.login_username = str(usuario or "").strip()
     st.rerun()
