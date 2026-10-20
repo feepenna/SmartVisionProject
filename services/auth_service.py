@@ -44,9 +44,21 @@ MSG_BLOQUEIO_TEMPORARIO = (
 # Padrões no corpo/status do erro que indicam credenciais rejeitadas pelo backend.
 _CREDENCIAIS_INVALIDAS_MARKERS = (
     "accessdenied",
+    "access_denied",
     "invalid credentials",
     "401",
     "403",
+)
+
+# Marcador do bloqueio por tentativas repetidas imposto pelo backend
+# (throw {name = "ratelimit"} em auth/login_POST.xs). Verificado ANTES dos
+# marcadores de credenciais para não mascarar o lockout como "credencial
+# inválida".
+_LOCKOUT_MARKERS = (
+    "muitas tentativas",
+    "ratelimit",
+    "rate limit",
+    "too many",
 )
 
 
@@ -66,6 +78,8 @@ def validar_campos(usuario: Optional[str], senha: Optional[str]) -> Optional[str
 def classificar_erro_login(exc: Exception) -> str:
     """Classifica uma exceção de login na mensagem obrigatória correspondente.
 
+    - Bloqueio por tentativas repetidas imposto pelo backend →
+      ``MSG_BLOQUEIO_TEMPORARIO``.
     - Rejeição explícita de credenciais pelo backend (401/403/accessdenied/
       "Invalid Credentials") → ``MSG_CREDENCIAIS_INVALIDAS``.
     - Qualquer outra falha (rede, timeout, backend indisponível, 5xx,
@@ -73,6 +87,8 @@ def classificar_erro_login(exc: Exception) -> str:
     """
     if isinstance(exc, requests.HTTPError):
         msg = str(exc).lower()
+        if any(marker in msg for marker in _LOCKOUT_MARKERS):
+            return MSG_BLOQUEIO_TEMPORARIO
         if any(marker in msg for marker in _CREDENCIAIS_INVALIDAS_MARKERS):
             return MSG_CREDENCIAIS_INVALIDAS
     return MSG_FALHA_COMUNICACAO
@@ -168,6 +184,10 @@ def autenticar(usuario: str, senha: str, rate_limiter: RateLimiter):
         if mensagem == MSG_CREDENCIAIS_INVALIDAS:
             rate_limiter.registrar_falha()
             raise ValueError(mensagem) from exc
+        if mensagem == MSG_BLOQUEIO_TEMPORARIO:
+            # O backend já está impondo o bloqueio: não duplica a punição
+            # no contador local (a validação real é sempre server-side).
+            raise RuntimeError(mensagem) from exc
         raise Exception(mensagem) from exc
 
     auth_token = auth_result.get("authToken")

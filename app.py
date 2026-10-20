@@ -49,7 +49,7 @@ st.markdown("""
     :root {
         --primary-color: #3942F6;
         --secondary-color: #F8B807;
-        --bg-color: #F8FAFC;
+        --bg-color: #F1F2F4;
         --text-main: #0F172A;
         --text-muted: #64748B;
         --card-bg: #FFFFFF;
@@ -341,6 +341,7 @@ st.markdown("""
 
     /* ===== Change 06: Tela de Login ===== */
     .login-page {
+        --border-color: #D4D4D8;
         background: #F1F2F4;
         min-height: 100vh;
         display: flex;
@@ -386,33 +387,33 @@ st.markdown("""
         display: block;
         font-size: 0.85rem;
         font-weight: 600;
-        color: #374151;
+        color: var(--text-main);
         margin-bottom: 6px;
     }
     .login-field input {
         width: 100%;
         padding: 12px 14px;
-        border: 1px solid #D1D5DB;
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         font-size: 0.95rem;
-        color: #111827;
+        color: var(--text-main);
         box-sizing: border-box;
         outline: none;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
     .login-field input:focus {
-        border-color: #18181B;
-        box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.10);
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(57, 66, 246, 0.10);
     }
     .login-field input::placeholder {
-        color: #9CA3AF;
+        color: #A1A1AA;
     }
     .login-toggle {
         background: transparent;
         border: none;
         cursor: pointer;
         font-size: 0.85rem;
-        color: #52525B;
+        color: var(--text-secondary);
         font-weight: 600;
         padding: 0;
         margin-top: 6px;
@@ -420,7 +421,7 @@ st.markdown("""
         width: 100%;
     }
     .login-toggle:hover {
-        color: #18181B;
+        color: var(--text-main);
     }
     .login-btn {
         width: 100%;
@@ -475,31 +476,31 @@ st.markdown("""
     .login-dev {
         margin-top: 28px;
         padding-top: 20px;
-        border-top: 1px solid #E5E7EB;
+        border-top: 1px solid var(--border-color);
     }
     .login-dev-title {
         font-size: 0.8rem;
         font-weight: 700;
-        color: #6B7280;
+        color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin: 0 0 10px 0;
     }
     .login-dev-creds {
         background: #F3F4F6;
-        border: 1px solid #E5E7EB;
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         padding: 12px 14px;
         font-size: 0.85rem;
-        color: #374151;
+        color: var(--text-secondary);
         margin-bottom: 8px;
     }
-    .login-dev-creds b { color: #111827; }
+    .login-dev-creds b { color: var(--text-main); }
     .login-divider {
         display: flex;
         align-items: center;
         margin: 20px 0 12px 0;
-        color: #9CA3AF;
+        color: var(--text-secondary);
         font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -508,7 +509,7 @@ st.markdown("""
     .login-divider::before, .login-divider::after {
         content: "";
         flex: 1;
-        border-bottom: 1px solid #E5E7EB;
+        border-bottom: 1px solid var(--border-color);
     }
     .login-divider:not(:first-child)::before { margin-right: 10px; }
     .login-divider:not(:last-child)::after { margin-left: 10px; }
@@ -594,7 +595,6 @@ def _render_login_screen():
         senha_tipo = "text" if st.session_state.login_show_password else "password"
         senha = st.text_input(
             "Senha",
-            value="",
             placeholder="Digite sua senha",
             type=senha_tipo,
             label_visibility="collapsed",
@@ -609,7 +609,7 @@ def _render_login_screen():
                 key="login_entrar_btn",
             )
         with col_toggle:
-            toggle_label = "🙈" if st.session_state.login_show_password else "👁️"
+            toggle_label = "Mostrar" if st.session_state.login_show_password else "Ocultar"
             toggle_clicado = st.form_submit_button(
                 toggle_label,
                 help="Mostrar / ocultar senha",
@@ -625,14 +625,19 @@ def _render_login_screen():
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Área de credenciais fictícias (ambiente de desenvolvimento)
-    st.markdown("""
-    <div class="login-dev">
-        <div class="login-dev-title">Ambiente de Desenvolvimento</div>
-        <div class="login-dev-creds"><b>Gerente:</b> gerente@smartvision.com / Senha123!</div>
-        <div class="login-dev-creds"><b>Supervisor:</b> supervisor@smartvision.com / Senha123!</div>
-        <div class="login-dev-creds"><b>Vendedor:</b> vendedor@smartvision.com / Senha123!</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Apenas demonstração: credenciais passam pelo fluxo real de autenticação
+    if "DEV_CREDENTIALS_SHOWN" not in st.session_state:
+        st.session_state.DEV_CREDENTIALS_SHOWN = True
+    
+    if st.session_state.DEV_CREDENTIALS_SHOWN:
+        st.markdown("""
+        <div class="login-dev">
+            <div class="login-dev-title">Credenciais para Avaliação (Ambiente de Desenvolvimento)</div>
+            <div class="login-dev-creds"><b>Gerente:</b> gerente@smartvision.com / Senha123!</div>
+            <div class="login-dev-creds"><b>Supervisor:</b> supervisor@smartvision.com / Senha123!</div>
+            <div class="login-dev-creds"><b>Vendedor:</b> vendedor@smartvision.com / Senha123!</div>
+        </div>
+        """, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Lógica de submissão do formulário
@@ -841,7 +846,7 @@ with st.sidebar:
         current_env_url = os.getenv("XANO_BASE_URL", "")
         base_url_input = st.text_input(
             "XANO_BASE_URL:",
-            value=current_env_url or "https://x8ki-letl-twmt.n7.xano.io/api"
+            value=current_env_url or "https://x8ki-letl-twmt.n7.xano.io/api:SzoTJegm"
         )
         if base_url_input:
             os.environ["XANO_BASE_URL"] = base_url_input

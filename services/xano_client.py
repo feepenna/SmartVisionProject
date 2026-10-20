@@ -747,20 +747,35 @@ def update_stock_parameters(
 # Autenticação (Change 06: Login e Autenticação)
 # ---------------------------------------------------------------------------
 
-def _get_auth_login_endpoint() -> str:
-    """Resolve endpoint de login do Xano Authentication group.
+# Canonical do grupo Authentication (xano/api/authentication/authentication.xs).
+# A URL pública de um grupo Xano é {origem}/api:{canonical}/{query} — confirmado
+# por sondagem ao workspace: o Authentication não responde em {base}/auth/...
+# nem sob o prefixo smart_vision/. Derivar da origem evita depender do base
+# conter o canonical de outro grupo (Smart Vision = SzoTJegm).
+AUTH_GROUP_CANONICAL = "RRY0Pj3A"
 
-    O grupo Authentication é servido na raiz do ``XANO_BASE_URL``
-    (``{base}/auth/login``), conforme o padrão de quick-start do Xano e o
-    demo page em ``xano/api/authentication`` — diferente do grupo Smart Vision,
-    que é servido sob ``{base}/smart_vision/``.
+
+def _get_auth_base_url() -> str:
+    """Base do grupo Authentication: ``{origem}/api:RRY0Pj3A``.
+
+    Override opcional via ``XANO_AUTH_BASE_URL`` (ex.: proxy próprio).
     """
-    return f"{get_base_url()}/auth/login"
+    override = os.getenv("XANO_AUTH_BASE_URL")
+    if override and override.strip():
+        return override.strip().rstrip("/")
+    base = get_base_url()
+    origin = "/".join(base.split("/")[:3])  # scheme://host[:port]
+    return f"{origin}/api:{AUTH_GROUP_CANONICAL}"
+
+
+def _get_auth_login_endpoint() -> str:
+    """Resolve endpoint de login do Xano Authentication group."""
+    return f"{_get_auth_base_url()}/auth/login"
 
 
 def _get_auth_me_endpoint() -> str:
-    """Resolve endpoint auth/me do Xano Authentication group (raiz da API)."""
-    return f"{get_base_url()}/auth/me"
+    """Resolve endpoint auth/me do Xano Authentication group."""
+    return f"{_get_auth_base_url()}/auth/me"
 
 
 def login(email: str, password: str) -> Dict[str, Any]:

@@ -205,8 +205,8 @@ Este documento apresenta o modelo conceitual consolidado do sistema **Smart Visi
     
 - **Responsabilidade**: Autenticar ações e definir permissões na loja.
     
-- **Atributos**: Nome, E-mail/Login, Perfil (Gestor, Estoquista, Vendedor, Técnico — além dos perfis legados `admin`, equivalente a Gestor, e `member`, equivalente a leitura) e Status.
+- **Atributos**: Nome, E-mail/Login, Perfil (Gestor, Supervisor, Estoquista, Vendedor, Técnico — além dos perfis legados `admin`, equivalente a Gestor, e `member`, equivalente a leitura) e Status.
     
 - **Relacionamentos**: Executa e assina Entradas, Saídas, Inventários, Históricos, Alertas e Parâmetros de Estoque.
     
-- **Regras**: Ajustes manuais de saldo e aprovação de inventário exigem perfil autorizado. No módulo de alertas (Change 05): leitura para todos os perfis; avaliação de alertas e mudança de status para Gestor, Estoquista e `admin`; configuração de parâmetros de estoque somente para Gestor e `admin`. A permissão é sempre validada no backend.
+- **Regras**: Ajustes manuais de saldo e aprovação de inventário exigem perfil autorizado. No módulo de alertas (Change 05): leitura para todos os perfis; avaliação de alertas e mudança de status para Gestor, Estoquista e `admin`; configuração de parâmetros de estoque somente para Gestor e `admin`. A permissão é sempre validada no backend. Change 06: o perfil **Supervisor** foi incluído no enum `role` da tabela `user` (aprovação de Felipe) e na hierarquia de permissões do backend — abaixo de Gestor/`admin` (atribuição de roles exige Gestor/`admin`) e no mesmo nível de Estoquista/Técnico para demais operações administrativas; o login busca o perfil exclusivamente do backend e o frontend apenas adapta a UI (a validação real é server-side).

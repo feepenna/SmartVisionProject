@@ -10,8 +10,14 @@ function "Getting Started Template/role-based access control" {
 
   stack {
     // Defines a hierarchy of roles with numerical levels.
+    // Change 06: perfis do domain-model adicionados (o mapeamento anterior
+    // só tinha os legados admin/member — Gestor/Supervisor/etc. ficavam em
+    // nível 0 e eram negados em checagens admin, contrariando o domain-model
+    // "Gestor: acesso a tudo"). Ordem: admin/Gestor (3) > Supervisor,
+    // Estoquista, Técnico (2) > Vendedor/member (1). Necessário para que a
+    // atribuição de roles via admin/user_role valide perfis reais.
     var $role_hierarchy {
-      value = {admin: 2, member: 1}
+      value = {admin: 3, Gestor: 3, Supervisor: 2, Estoquista: 2, Técnico: 2, Vendedor: 1, member: 1}
     }
   
     // Retrieve the user's role from the database.

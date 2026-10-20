@@ -25,24 +25,39 @@ class TestAuthEndpoints(unittest.TestCase):
     def tearDown(self):
         self.env_patcher.stop()
 
-    def test_login_endpoint_na_raiz(self):
-        """Grupo Authentication é servido na raiz do base URL (não smart_vision/)."""
+    def test_login_endpoint_canonical_do_grupo(self):
+        """Authentication group é servido em {origem}/api:RRY0Pj3A (canonical)."""
         self.assertEqual(
             xano_client._get_auth_login_endpoint(),
-            "https://mock.xano.io/api/auth/login",
+            "https://mock.xano.io/api:RRY0Pj3A/auth/login",
         )
 
-    def test_me_endpoint_na_raiz(self):
+    def test_me_endpoint_canonical_do_grupo(self):
         self.assertEqual(
             xano_client._get_auth_me_endpoint(),
-            "https://mock.xano.io/api/auth/me",
+            "https://mock.xano.io/api:RRY0Pj3A/auth/me",
         )
 
-    def test_endpoints_sem_barra_final(self):
+    def test_base_url_com_canonical_do_smart_vision(self):
+        """O canonical de outro grupo no base não afeta a base do auth."""
+        with patch.dict(os.environ, {"XANO_BASE_URL": "https://mock.xano.io/api:SzoTJegm"}):
+            self.assertEqual(
+                xano_client._get_auth_login_endpoint(),
+                "https://mock.xano.io/api:RRY0Pj3A/auth/login",
+            )
+
+    def test_base_url_com_barra_final(self):
         with patch.dict(os.environ, {"XANO_BASE_URL": "https://mock.xano.io/api/"}):
             self.assertEqual(
                 xano_client._get_auth_login_endpoint(),
-                "https://mock.xano.io/api/auth/login",
+                "https://mock.xano.io/api:RRY0Pj3A/auth/login",
+            )
+
+    def test_override_xano_auth_base_url(self):
+        with patch.dict(os.environ, {"XANO_AUTH_BASE_URL": "https://proxy.example.com/auth/"}):
+            self.assertEqual(
+                xano_client._get_auth_login_endpoint(),
+                "https://proxy.example.com/auth/auth/login",
             )
 
 
@@ -79,7 +94,7 @@ class TestLoginFunction(unittest.TestCase):
 
         self.assertEqual(result["authToken"], "tok-abc")
         args, kwargs = mock_post.call_args
-        self.assertEqual(args[0], "https://mock.xano.io/api/auth/login")
+        self.assertEqual(args[0], "https://mock.xano.io/api:RRY0Pj3A/auth/login")
         # E-mail normalizado para trim + lower; senha em claro apenas no payload.
         self.assertEqual(
             kwargs["json"],
@@ -127,7 +142,7 @@ class TestGetMeFunction(unittest.TestCase):
 
         self.assertEqual(result["role"], "Gestor")
         args, kwargs = mock_get.call_args
-        self.assertEqual(args[0], "https://mock.xano.io/api/auth/me")
+        self.assertEqual(args[0], "https://mock.xano.io/api:RRY0Pj3A/auth/me")
         self.assertEqual(kwargs["headers"], {"Authorization": "Bearer tok-abc"})
         self.assertEqual(kwargs["timeout"], 10)
 

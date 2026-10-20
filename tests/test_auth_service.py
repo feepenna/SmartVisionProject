@@ -97,6 +97,20 @@ class TestClassificarErroLogin(unittest.TestCase):
     def test_excecao_generica_e_falha_comunicacao(self):
         self.assertEqual(classificar_erro_login(RuntimeError("boom")), MSG_FALHA_COMUNICACAO)
 
+    def test_lockout_do_backend_e_mensagem_de_bloqueio(self):
+        """throw {name="ratelimit"} do login_POST.xs → mensagem de bloqueio."""
+        exc = _http_error(400, '{"code":"ratelimit","message":"Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente."}')
+        self.assertEqual(classificar_erro_login(exc), MSG_BLOQUEIO_TEMPORARIO)
+
+    def test_lockout_tem_prioridade_sobre_credenciais(self):
+        """Mesmo com 403/accessdenied na resposta, o lockout não é mascarado."""
+        exc = _http_error(403, '{"code":"ERROR_CODE_ACCESS_DENIED","message":"Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente."}')
+        self.assertEqual(classificar_erro_login(exc), MSG_BLOQUEIO_TEMPORARIO)
+
+    def test_access_denied_snake_case_e_credenciais_invalidas(self):
+        exc = _http_error(403, '{"code":"ERROR_CODE_ACCESS_DENIED","message":"nope"}')
+        self.assertEqual(classificar_erro_login(exc), MSG_CREDENCIAIS_INVALIDAS)
+
 
 class TestRateLimiter(unittest.TestCase):
     """Proteção contra tentativas repetidas."""
@@ -198,6 +212,18 @@ class TestAutenticar(unittest.TestCase):
         for _ in range(4):
             with self.assertRaises(Exception):
                 autenticar("gerente@smartvision.com", "Senha123!", self.rl)
+        self.assertEqual(self.rl.bloqueado(), (False, 0))
+
+    @patch("services.auth_service.xano_client.login")
+    def test_lockout_vindo_do_backend_raises_runtime_sem_contar(self, mock_login):
+        """Bloqueio imposto pelo backend chega como RuntimeError (não conta falha local)."""
+        mock_login.side_effect = _http_error(
+            400, '{"code":"ratelimit","message":"Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente."}'
+        )
+        with self.assertRaises(RuntimeError) as ctx:
+            autenticar("gerente@smartvision.com", "Senha123!", self.rl)
+        self.assertEqual(str(ctx.exception), MSG_BLOQUEIO_TEMPORARIO)
+        # O backend já está bloqueando: o contador local não avança.
         self.assertEqual(self.rl.bloqueado(), (False, 0))
 
     @patch("services.auth_service.xano_client.login")

@@ -24,8 +24,10 @@ table user {
     // somados aos valores legados "admin" (equivalente a Gestor) e "member"
     // (somente leitura, equivalente a Vendedor). Valores legados preservados
     // para não invalidar usuários existentes.
+    // Change 06: "Supervisor" incluído (perfil previsto no escopo do login;
+    // mudança de schema aprovada por Felipe nesta sessão — AGENTS.md §4.1).
     enum role? {
-      values = ["admin", "member", "Gestor", "Estoquista", "Vendedor", "Técnico"]
+      values = ["admin", "member", "Gestor", "Supervisor", "Estoquista", "Vendedor", "Técnico"]
       visibility = "private"
     }
   
