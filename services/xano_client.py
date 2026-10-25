@@ -986,3 +986,116 @@ def get_me(auth_token: str) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {auth_token}"}
     response = requests.get(_get_auth_me_endpoint(), headers=headers, timeout=10)
     return _handle_response(response)
+
+
+# ---------------------------------------------------------------------------
+# Gestão de Colaboradores e Equipe (Members & Accounts / Authentication)
+# ---------------------------------------------------------------------------
+
+MEMBERS_GROUP_CANONICAL = "NCs6_YME"
+
+
+def _get_members_base_url() -> str:
+    """Base do grupo Members & Accounts: ``{origem}/api:NCs6_YME``.
+
+    Override opcional via ``XANO_MEMBERS_BASE_URL``.
+    """
+    override = os.getenv("XANO_MEMBERS_BASE_URL")
+    if override and override.strip():
+        return override.strip().rstrip("/")
+    base = get_base_url()
+    origin = "/".join(base.split("/")[:3])
+    return f"{origin}/api:{MEMBERS_GROUP_CANONICAL}"
+
+
+def _get_auth_signup_endpoint() -> str:
+    """Resolve endpoint de signup do Xano Authentication group."""
+    return f"{_get_auth_base_url()}/auth/signup"
+
+
+def _get_members_team_endpoint() -> str:
+    """Resolve endpoint account/my_team_members do Xano Members group."""
+    return f"{_get_members_base_url()}/account/my_team_members"
+
+
+def _get_admin_role_endpoint() -> str:
+    """Resolve endpoint admin/user_role do Xano Members group."""
+    return f"{_get_members_base_url()}/admin/user_role"
+
+
+def signup_user(name: str, email: str, password: str) -> Dict[str, Any]:
+    """Cadastra um novo usuário no backend Xano via auth/signup.
+
+    Args:
+        name: Nome completo do usuário.
+        email: E-mail para login.
+        password: Senha em texto plano (mínimo 8 caracteres, 1 letra, 1 número).
+
+    Returns:
+        Dicionário com ``authToken`` e ``user_id`` gerados pelo Xano.
+
+    Raises:
+        ValueError: Se algum campo for inválido.
+        requests.HTTPError: Se houver erro de validação ou conflito no Xano.
+    """
+    if not name or not str(name).strip():
+        raise ValueError("Informe o nome do colaborador.")
+    if not email or not str(email).strip() or "@" not in str(email):
+        raise ValueError("Informe um e-mail válido para o colaborador.")
+    if not password or len(str(password)) < 8:
+        raise ValueError("A senha deve conter no mínimo 8 caracteres.")
+
+    payload = {
+        "name": str(name).strip(),
+        "email": str(email).strip().lower(),
+        "password": str(password),
+    }
+    response = requests.post(_get_auth_signup_endpoint(), json=payload, timeout=10)
+    return _handle_response(response)
+
+
+def list_team_members(auth_token: str) -> List[Dict[str, Any]]:
+    """Lista colaboradores vinculados à conta da ótica no Xano.
+
+    Args:
+        auth_token: Token de autenticação da sessão.
+
+    Returns:
+        Lista de membros com id, name, email, created_at, account_id.
+
+    Raises:
+        ValueError: Se auth_token não for informado.
+        requests.HTTPError: Se houver erro de permissão ou conexão.
+    """
+    if not auth_token:
+        raise ValueError("auth_token é obrigatório.")
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    response = requests.get(_get_members_team_endpoint(), headers=headers, timeout=10)
+    return _handle_response(response)
+
+
+def update_user_role(target_user_id: int, new_role: str, auth_token: str) -> Dict[str, Any]:
+    """Atualiza o papel/cargo do usuário via admin/user_role no Xano.
+
+    Args:
+        target_user_id: ID do usuário a atualizar.
+        new_role: Novo cargo/perfil (ex: Gestor, Supervisor, Vendedor, Estoquista, Técnico).
+        auth_token: Token de autenticação da sessão.
+
+    Returns:
+        Resposta da API Xano com os dados atualizados.
+    """
+    if not target_user_id:
+        raise ValueError("target_user_id é obrigatório.")
+    if not new_role or not str(new_role).strip():
+        raise ValueError("new_role é obrigatório.")
+    if not auth_token:
+        raise ValueError("auth_token é obrigatório.")
+
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    payload = {
+        "user_id": int(target_user_id),
+        "new_role": str(new_role).strip(),
+    }
+    response = requests.post(_get_admin_role_endpoint(), json=payload, headers=headers, timeout=10)
+    return _handle_response(response)

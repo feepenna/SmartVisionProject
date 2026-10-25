@@ -1182,11 +1182,25 @@ elif menu_option == "📂 Central do Colaborador":
     st.subheader("📂 Central do Colaborador: Folha, Ponto & Solicitações")
     st.markdown("Acesse seus comprovantes de rendimento, controle seu saldo de banco de horas e envie pedidos formais ao RH.")
 
-    tab_holerite, tab_ponto, tab_solic = st.tabs([
-        "📄 Recibos de Vencimento (Holerites)",
-        "⏰ Espelho de Ponto & Banco de Horas",
-        "📝 Solicitações ao RH (Férias, Atestados, Turno)"
-    ])
+    _user = st.session_state.auth_user or {}
+    _role = (_user.get("role") or "").lower()
+    _email = (_user.get("email") or "").lower()
+    _is_manager = _role in ("gestor", "gerente", "admin") or "gerente" in _email or "admin" in _email
+
+    if _is_manager:
+        tab_holerite, tab_ponto, tab_solic, tab_gestao = st.tabs([
+            "📄 Recibos de Vencimento (Holerites)",
+            "⏰ Espelho de Ponto & Banco de Horas",
+            "📝 Solicitações ao RH (Férias, Atestados, Turno)",
+            "👥 Cadastrar Colaborador (Gestão)"
+        ])
+    else:
+        tab_holerite, tab_ponto, tab_solic = st.tabs([
+            "📄 Recibos de Vencimento (Holerites)",
+            "⏰ Espelho de Ponto & Banco de Horas",
+            "📝 Solicitações ao RH (Férias, Atestados, Turno)"
+        ])
+        tab_gestao = None
 
     with tab_holerite:
         st.markdown("### 📄 Holerites dos Últimos 12 Meses")
@@ -1289,6 +1303,131 @@ Status: Autenticado digitalmente
                     "status": "Em Análise pela Gerência"
                 })
                 st.success(f"✅ Solicitação enviada com sucesso! Protocolo: **{protocolo}**")
+
+    if tab_gestao:
+        with tab_gestao:
+            st.markdown("### 👥 Gestão de Equipe & Cadastro de Novo Colaborador")
+            st.caption("Painel exclusivo para Gestores. Cadastre novos funcionários da ótica e visualize os colaboradores ativos.")
+
+            col_form, col_info = st.columns([3, 2])
+
+            with col_form:
+                with st.form("form_novo_colaborador", clear_on_submit=True):
+                    st.markdown("##### 📝 Dados do Novo Colaborador")
+                    novo_nome = st.text_input("Nome Completo *", placeholder="Ex: Mariana Costa")
+                    novo_email = st.text_input("E-mail de Acesso (Login) *", placeholder="Ex: mariana.costa@smartvision.com")
+                    nova_senha = st.text_input(
+                        "Senha Inicial *",
+                        type="password",
+                        placeholder="Mínimo 8 caracteres (letras e números)",
+                        help="Requisitos de segurança: mínimo 8 caracteres com letras e dígitos."
+                    )
+                    novo_cargo = st.selectbox(
+                        "Cargo / Perfil de Acesso *",
+                        options=["Vendedor", "Supervisor", "Gestor", "Estoquista", "Técnico"]
+                    )
+
+                    btn_cadastrar = st.form_submit_button("➕ Cadastrar Colaborador", type="primary")
+
+                    if btn_cadastrar:
+                        erros = []
+                        if not novo_nome.strip():
+                            erros.append("Informe o nome completo do colaborador.")
+                        if not novo_email.strip() or "@" not in novo_email:
+                            erros.append("Informe um e-mail válido para o colaborador.")
+                        if len(nova_senha) < 8 or not any(c.isalpha() for c in nova_senha) or not any(c.isdigit() for c in nova_senha):
+                            erros.append("A senha inicial deve ter no mínimo 8 caracteres, contendo pelo menos 1 letra e 1 número.")
+
+                        if erros:
+                            for err in erros:
+                                st.error(err)
+                        else:
+                            try:
+                                if xano_client:
+                                    signup_resp = xano_client.signup_user(novo_nome.strip(), novo_email.strip(), nova_senha)
+                                    novo_id = signup_resp.get("user_id")
+
+                                    # Tentar registrar role no backend via admin_user_role
+                                    if novo_id and st.session_state.auth_token:
+                                        try:
+                                            xano_client.update_user_role(novo_id, novo_cargo, st.session_state.auth_token)
+                                        except Exception:
+                                            pass
+
+                                    if "created_team_members" not in st.session_state:
+                                        st.session_state.created_team_members = []
+                                    st.session_state.created_team_members.append({
+                                        "id": novo_id,
+                                        "name": novo_nome.strip(),
+                                        "email": novo_email.strip().lower(),
+                                        "role": novo_cargo,
+                                        "created_at": datetime.now().strftime("%d/%m/%Y %H:%M")
+                                    })
+
+                                    st.success(
+                                        f"🎉 Colaborador **{novo_nome.strip()}** cadastrado com sucesso!\n\n"
+                                        f"- **E-mail de Login:** `{novo_email.strip().lower()}`\n"
+                                        f"- **Cargo / Perfil:** **{novo_cargo}**\n\n"
+                                        f"O usuário já pode entrar no sistema com as credenciais cadastradas."
+                                    )
+                                else:
+                                    st.error("Serviço Xano não está disponível.")
+                            except Exception as exc:
+                                err_msg = str(exc)
+                                if "already in use" in err_msg.lower() or "400" in err_msg:
+                                    st.error("⚠️ Este e-mail já está em uso por outro usuário no sistema.")
+                                else:
+                                    st.error(f"Erro ao cadastrar colaborador: {err_msg}")
+
+            with col_info:
+                st.markdown("##### ℹ️ Cargos e Níveis de Acesso")
+                st.markdown("""
+                - **Vendedor:** Registro de saídas no PDV (venda balcão, laboratório), consulta de catálogo e metas.
+                - **Supervisor:** Monitoramento de estoque, contagem física em inventário e visão de alertas.
+                - **Gestor:** Aprovação de divergências de inventário, autorização de perdas e gestão de colaboradores.
+                - **Estoquista:** Conferência de notas fiscais, entradas de mercadorias e catálogo.
+                - **Técnico:** Ajustes ópticos e controle de montagem em laboratório.
+                """)
+
+            st.markdown("---")
+            st.markdown("#### 📋 Colaboradores Registrados na Loja")
+
+            team_list = []
+            if xano_client and st.session_state.auth_token:
+                try:
+                    raw_team = xano_client.list_team_members(st.session_state.auth_token)
+                    for m in raw_team:
+                        created_ts = m.get("created_at")
+                        created_str = (
+                            datetime.fromtimestamp(created_ts / 1000).strftime("%d/%m/%Y")
+                            if created_ts and isinstance(created_ts, (int, float))
+                            else "—"
+                        )
+                        team_list.append({
+                            "ID": m.get("id"),
+                            "Nome": m.get("name") or "—",
+                            "E-mail": m.get("email") or "—",
+                            "Data de Cadastro": created_str,
+                            "Status": "🟢 Ativo",
+                        })
+                except Exception:
+                    pass
+
+            existing_emails = {m["E-mail"] for m in team_list}
+            for loc in st.session_state.get("created_team_members", []):
+                if loc["email"] not in existing_emails:
+                    team_list.append({
+                        "ID": loc.get("id") or "Novo",
+                        "Nome": loc["name"],
+                        "E-mail": loc["email"],
+                        "Data de Cadastro": loc["created_at"],
+                        "Status": "🟢 Ativo",
+                    })
+
+            if team_list:
+                st.dataframe(team_list, use_container_width=True)
+            else:
+                st.info("Nenhum colaborador registrado na equipe.")
 
 
 # -----------------------------------------------------------------------------

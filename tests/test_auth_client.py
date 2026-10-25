@@ -153,9 +153,69 @@ class TestGetMeFunction(unittest.TestCase):
         mock_response.raise_for_status.side_effect = requests.HTTPError("401 Client Error")
         mock_response.text = '{"message":"invalid token"}'
         mock_get.return_value = mock_response
-
         with self.assertRaises(requests.HTTPError):
             xano_client.get_me("token-invalido")
+
+
+class TestTeamManagement(unittest.TestCase):
+
+    def setUp(self):
+        self.env_patcher = patch.dict(
+            os.environ, {"XANO_BASE_URL": "https://mock.xano.io/api"}
+        )
+        self.env_patcher.start()
+
+    def tearDown(self):
+        self.env_patcher.stop()
+
+    def test_endpoints_members_e_signup(self):
+        self.assertEqual(
+            xano_client._get_auth_signup_endpoint(),
+            "https://mock.xano.io/api:RRY0Pj3A/auth/signup",
+        )
+        self.assertEqual(
+            xano_client._get_members_team_endpoint(),
+            "https://mock.xano.io/api:NCs6_YME/account/my_team_members",
+        )
+        self.assertEqual(
+            xano_client._get_admin_role_endpoint(),
+            "https://mock.xano.io/api:NCs6_YME/admin/user_role",
+        )
+
+    @patch("requests.post")
+    def test_signup_user_valido(self, mock_post):
+        mock_response = MagicMock(spec=requests.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"authToken": "tok-novo", "user_id": 10}
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        res = xano_client.signup_user("Ana Paula", "Ana@SmartVision.com", "SenhaForte123!")
+        self.assertEqual(res["user_id"], 10)
+        args, kwargs = mock_post.call_args
+        self.assertIn("/auth/signup", args[0])
+        self.assertEqual(kwargs["json"]["email"], "ana@smartvision.com")
+        self.assertEqual(kwargs["json"]["name"], "Ana Paula")
+
+    def test_signup_user_validacoes(self):
+        with self.assertRaises(ValueError):
+            xano_client.signup_user("", "ana@test.com", "Senha123!")
+        with self.assertRaises(ValueError):
+            xano_client.signup_user("Ana", "email_invalido", "Senha123!")
+        with self.assertRaises(ValueError):
+            xano_client.signup_user("Ana", "ana@test.com", "curta")
+
+    @patch("requests.get")
+    def test_list_team_members(self, mock_get):
+        mock_response = MagicMock(spec=requests.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = [{"id": 1, "name": "Admin"}]
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        res = xano_client.list_team_members("tok-abc")
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["name"], "Admin")
 
 
 if __name__ == "__main__":
