@@ -2081,31 +2081,10 @@ def _render_login_screen():
                     unsafe_allow_html=True,
                 )
 
-    # --- Credenciais de desenvolvimento (abaixo do card, fora do form) ---
-    if "DEV_CREDENTIALS_SHOWN" not in st.session_state:
-        st.session_state.DEV_CREDENTIALS_SHOWN = True
-
-    if st.session_state.DEV_CREDENTIALS_SHOWN:
-        st.markdown("""
-        <div class="login-dev">
-            <div class="login-dev-title">Acessos de avaliação · ambiente de desenvolvimento</div>
-            <div class="login-dev-grid">
-                <div class="login-dev-item">
-                    <div class="login-dev-role">Gerente</div>
-                    <div class="login-dev-cred"><b>gerente@smartvision.com</b><br>Senha123!</div>
-                </div>
-                <div class="login-dev-item">
-                    <div class="login-dev-role">Supervisor</div>
-                    <div class="login-dev-cred"><b>supervisor@smartvision.com</b><br>Senha123!</div>
-                </div>
-                <div class="login-dev-item">
-                    <div class="login-dev-role">Vendedor</div>
-                    <div class="login-dev-cred"><b>vendedor@smartvision.com</b><br>Senha123!</div>
-                </div>
-            </div>
-        </div>
-        <div class="login-footnote">SmartVision · Plataforma corporativa de gestão óptica &nbsp;·&nbsp; v2.0</div>
-        """, unsafe_allow_html=True)
+    # --- Rodapé (abaixo do card, fora do form) ---
+    st.markdown("""
+    <div class="login-footnote">SmartVision · Plataforma corporativa de gestão óptica &nbsp;·&nbsp; v2.0</div>
+    """, unsafe_allow_html=True)
 
     # --- Lógica de submissão ---
     if entrar:
