@@ -1,8 +1,9 @@
 // Cadastrar um novo produto no catálogo.
-// Sem autenticação por escopo desta Change; a integração de auth/RBAC está
-// prevista na Change 07. O saldo inicial é sempre 0 e só muda via movimentação auditada.
+// Permissão: usuário autenticado com perfil de gestão/estoque. O saldo inicial
+// é sempre 0 e só muda via movimentação auditada.
 query products verb=POST {
   api_group = "Smart Vision"
+  auth = "user"
 
   input {
     text sku filters=trim
@@ -26,6 +27,25 @@ query products verb=POST {
   }
 
   stack {
+    // 0. Validar perfil do usuário autenticado no backend.
+    // "member" é o perfil legado dos usuários demo; a normalização fina de
+    // perfis fica para a Change 07. Vendedor/Técnico não cadastram produtos.
+    db.get user {
+      field_name = "id"
+      field_value = $auth.id
+      output = ["id", "role"]
+    } as $current_user
+
+    precondition ($current_user != null) {
+      error_type = "notfound"
+      error = "Usuário autenticado não encontrado."
+    }
+
+    precondition ($current_user.role == "Gestor" || $current_user.role == "Gerente" || $current_user.role == "Supervisor" || $current_user.role == "Estoquista" || $current_user.role == "admin" || $current_user.role == "member") {
+      error_type = "accessdenied"
+      error = "Seu perfil não tem permissão para cadastrar produtos."
+    }
+
     // 1. Validar campos gerais obrigatórios
     precondition ($input.sku != "" && $input.name != "" && $input.category != "" && $input.brand != "" && $input.model != "" && $input.location != "") {
       error_type = "inputerror"

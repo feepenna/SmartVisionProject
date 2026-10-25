@@ -95,30 +95,48 @@ def _handle_response(response: requests.Response) -> Any:
     return response.json()
 
 
-def list_products(filters: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+def list_products(
+    filters: Optional[Dict[str, str]] = None,
+    auth_token: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Retrieve a list of products.
 
     Args:
         filters: Optional dictionary with query parameters (e.g. ``{"category": "lens"}``).
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         A list of product dictionaries as returned by Xano.
     """
     params = filters or {}
-    response = requests.get(_get_products_endpoint(), params=params, timeout=10)
+    response = requests.get(
+        _get_products_endpoint(),
+        params=params,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def create_product(payload: Dict[str, Any]) -> Dict[str, Any]:
+def create_product(
+    payload: Dict[str, Any],
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Create a new product in Xano.
 
     Args:
         payload: Dictionary matching the fields defined in the Xano ``product`` table.
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         The created product record as returned by Xano.
     """
-    response = requests.post(_get_products_endpoint(), json=payload, timeout=10)
+    response = requests.post(
+        _get_products_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 

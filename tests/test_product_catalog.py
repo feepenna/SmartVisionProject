@@ -48,12 +48,27 @@ class TestProductCatalogClient(unittest.TestCase):
         mock_get.return_value.json.return_value = []
         mock_get.return_value.raise_for_status.return_value = None
 
-        result = xano_client.list_products()
+        result = xano_client.list_products(auth_token="token-123")
 
         self.assertEqual(result, [])
         mock_get.assert_called_once_with(
             "https://example.xano.io/api:SzoTJegm/products",
             params={},
+            headers={"Authorization": "Bearer token-123"},
+            timeout=10,
+        )
+
+    @patch("services.xano_client.requests.get")
+    def test_list_products_without_token_sends_no_authorization(self, mock_get):
+        mock_get.return_value.json.return_value = []
+        mock_get.return_value.raise_for_status.return_value = None
+
+        xano_client.list_products()
+
+        mock_get.assert_called_once_with(
+            "https://example.xano.io/api:SzoTJegm/products",
+            params={},
+            headers={},
             timeout=10,
         )
 
@@ -62,12 +77,16 @@ class TestProductCatalogClient(unittest.TestCase):
         mock_get.return_value.json.return_value = [{"id": 1}]
         mock_get.return_value.raise_for_status.return_value = None
 
-        result = xano_client.list_products({"category": "Armação", "search": "Ray"})
+        result = xano_client.list_products(
+            {"category": "Armação", "search": "Ray"},
+            auth_token="token-123",
+        )
 
         self.assertEqual(result, [{"id": 1}])
         mock_get.assert_called_once_with(
             "https://example.xano.io/api:SzoTJegm/products",
             params={"category": "Armação", "search": "Ray"},
+            headers={"Authorization": "Bearer token-123"},
             timeout=10,
         )
 
@@ -76,12 +95,13 @@ class TestProductCatalogClient(unittest.TestCase):
         mock_post.return_value.json.return_value = {"id": 10, **VALID_FRAME}
         mock_post.return_value.raise_for_status.return_value = None
 
-        result = xano_client.create_product(VALID_FRAME)
+        result = xano_client.create_product(VALID_FRAME, auth_token="token-123")
 
         self.assertEqual(result["id"], 10)
         mock_post.assert_called_once_with(
             "https://example.xano.io/api:SzoTJegm/products",
             json=VALID_FRAME,
+            headers={"Authorization": "Bearer token-123"},
             timeout=10,
         )
 
@@ -92,7 +112,7 @@ class TestProductCatalogClient(unittest.TestCase):
         response.text = '{"message": "SKU já está em uso"}'
 
         with self.assertRaises(requests.HTTPError) as ctx:
-            xano_client.create_product({"sku": "DUPLICADO"})
+            xano_client.create_product({"sku": "DUPLICADO"}, auth_token="token-123")
 
         self.assertIn("SKU já está em uso", str(ctx.exception))
 

@@ -1510,7 +1510,8 @@ elif menu_option == "📋 Catálogo de Produtos":
         else:
             try:
                 catalog_products = xano_client.list_products(
-                    product_catalog.filter_params(catalog_category, catalog_search)
+                    product_catalog.filter_params(catalog_category, catalog_search),
+                    auth_token=st.session_state.get("auth_token"),
                 )
             except Exception as exc:
                 catalog_error = str(exc)
@@ -1630,7 +1631,10 @@ elif menu_option == "📋 Catálogo de Produtos":
             else:
                 payload = product_catalog.build_product_payload(values)
                 try:
-                    created = xano_client.create_product(payload)
+                    created = xano_client.create_product(
+                        payload,
+                        auth_token=st.session_state.get("auth_token"),
+                    )
                 except Exception as exc:
                     st.error("Erro ao cadastrar produto: " + str(exc))
                 else:
@@ -1652,7 +1656,9 @@ elif menu_option == "📦 Gestão de Estoque Auditado":
     prods_data = []
     try:
         if xano_client and os.getenv("XANO_BASE_URL"):
-            prods_data = xano_client.list_products()
+            prods_data = xano_client.list_products(
+                auth_token=st.session_state.get("auth_token")
+            )
     except Exception:
         pass
 
@@ -1810,7 +1816,9 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
         """Catálogo de produtos (real via Xano ou mock)."""
         try:
             if xano_client and os.getenv("XANO_BASE_URL"):
-                data = xano_client.list_products()
+                data = xano_client.list_products(
+                    auth_token=st.session_state.get("auth_token")
+                )
                 st.session_state["inv_products"] = data
                 return data
         except Exception as exc:
@@ -2439,7 +2447,9 @@ elif menu_option == "🚚 Saídas de Estoque":
     all_products = []
     if xano_client:
         try:
-            all_products = xano_client.list_products()
+            all_products = xano_client.list_products(
+                auth_token=st.session_state.get("auth_token")
+            )
         except Exception:
             all_products = []
     if not all_products:

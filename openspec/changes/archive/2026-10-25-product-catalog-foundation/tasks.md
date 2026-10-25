@@ -26,9 +26,9 @@
 ## 4. Validação Ponta a Ponta
 
 - [x] 4.1 Cadastrar uma armação de teste e uma lente oftálmica com parâmetros de grau pela interface do Streamlit e verificar que ambos aparecem corretamente na tabela e foram persistidos no Xano.
-  - E2E live via API e Streamlit AppTest: armação ID 4 (`E2E-ARM-20261025155155`) e lente ID 5 (`E2E-LEN-20261025155155`, esf. -2.50, cil. -0.75, eixo 180) persistidas com saldo 0; cadastro adicional pela UI (ID 6, `E2E-UI-20261025155312`) confirmou o caminho completo do formulário. Consultas por busca e categoria retornaram os registros. Os dados E2E permanecem no catálogo para rastreabilidade.
+  - E2E live via API e Streamlit AppTest: armação ID 4 (`E2E-ARM-20261025155155`) e lente ID 5 (`E2E-LEN-20261025155155`, esf. -2.50, cil. -0.75, eixo 180) persistidas com saldo 0; cadastro adicional pela UI (IDs 6 e 7, `E2E-UI-20261025155312` e `E2E-AUTH-20261025160403`) confirmou o caminho completo do formulário, inclusive com token real. Consultas por busca e categoria retornaram os registros. Após a correção de auth, `GET/POST` sem token retornam 401; com token `member`/`admin` autenticam e o `POST` mantém as validações. Os dados E2E permanecem no catálogo para rastreabilidade.
 
 ## Notas de escopo
 
-- Autenticação/RBAC dos endpoints de produto não faz parte desta change (non-goal do design original); está prevista na Change 07. Por isso `GET/POST /products` permanecem sem `auth` explícito.
+- **Correção de segurança pós-arquivo (2026-10-25)**: `GET/POST /products` agora exigem `auth = "user"` no Xano. O `POST` valida o perfil do usuário no backend e permite `Gestor`, `Gerente`, `Supervisor`, `Estoquista`, `admin` e `member` legado; `Vendedor` e `Técnico` são bloqueados. A normalização fina dos perfis e o RBAC granular continuam previstos na Change 07.
 - A publicação foi limitada aos dois endpoints do catálogo para não enviar mudanças pendentes de outras features.

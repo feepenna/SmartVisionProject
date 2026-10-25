@@ -1,8 +1,8 @@
 // Listar produtos do catálogo com filtros opcionais por categoria e busca.
-// Sem autenticação por escopo desta Change; a integração de auth/RBAC está
-// prevista na Change 07. A leitura não altera estoque.
+// Permissão: qualquer usuário autenticado (leitura). A leitura não altera estoque.
 query products verb=GET {
   api_group = "Smart Vision"
+  auth = "user"
 
   input {
     text? category? filters=trim

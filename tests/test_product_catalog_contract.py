@@ -23,6 +23,19 @@ class TestProductEndpointContract(unittest.TestCase):
         self.assertRegex(self.get_source, r"(?m)^query products verb=GET")
         self.assertRegex(self.post_source, r"(?m)^query products verb=POST")
 
+    def test_endpoints_require_authentication(self):
+        for name, source in [("GET", self.get_source), ("POST", self.post_source)]:
+            with self.subTest(endpoint=name):
+                self.assertIn('auth = "user"', source)
+
+    def test_post_requires_management_role(self):
+        self.assertIn("db.get user", self.post_source)
+        self.assertIn("field_value = $auth.id", self.post_source)
+        self.assertIn('$current_user.role == "Gestor"', self.post_source)
+        self.assertIn('$current_user.role == "Estoquista"', self.post_source)
+        self.assertIn('error_type = "accessdenied"', self.post_source)
+        self.assertIn("Seu perfil não tem permissão", self.post_source)
+
     def test_get_filters_are_truly_optional(self):
         self.assertIn("text? category? filters=trim", self.get_source)
         self.assertIn("text? search? filters=trim", self.get_source)
