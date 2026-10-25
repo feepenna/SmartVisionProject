@@ -85,15 +85,15 @@ Este documento apresenta o modelo conceitual consolidado do sistema **Smart Visi
 
 **Saída de Estoque (e Item de Saída)**
 
-- **Descrição**: Registro de retirada de produtos por venda, montagem, avaria ou perda.
+- **Descrição**: Registro formal de retirada de produtos por venda, envio para laboratório, avaria/perda ou operação interna.
     
-- **Responsabilidade**: Decrementar o saldo em estoque e manter a justificativa da baixa.
+- **Responsabilidade**: Decrementar o saldo somente após validação e aprovação aplicável, preservando a justificativa e o vínculo com a movimentação auditada.
     
-- **Atributos**: Motivo da Saída, Data, Observações, Quantidade Baixada e Preço Praticado.
+- **Atributos**: Tipo (`SALE`, `LAB_SHIPMENT`, `LOSS`, `OPERATIONAL`), status (`Pendente`, `AguardandoAprovacao`, `Concluida`, `Rejeitada`, `Cancelada`, `FalhaNoProcessamento`), produto, quantidade, solicitante, aprovador, motivo, justificativa, referência (venda/pedido/OS), destino, observações, chave de idempotência, movimentação vinculada e datas de processamento.
     
-- **Relacionamentos**: Registrada por Usuário; pode associar-se a um Pedido de Cliente ou Receita.
+- **Relacionamentos**: Registrada por Usuário; referencia Produto Óptico e Pedido/OS; quando concluída, vincula-se a uma Movimentação de Estoque (`stock_movement_id`).
     
-- **Regras**: Exige motivo obrigatoriamente classificado.
+- **Regras**: O tipo e o status inicial são definidos pelo backend; `LOSS` exige justificativa e aprovação de gestor; somente `POST /outbound/process` conclui e baixa o estoque; operações concluídas, rejeitadas ou canceladas são imutáveis; a baixa é atômica, idempotente e nunca deixa saldo negativo.
     
 
 **Movimentação de Estoque / Histórico (Audit Ledger)**

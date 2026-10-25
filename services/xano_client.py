@@ -527,6 +527,7 @@ def apply_adjustments(
 
 _OUTBOUND_TYPES = ["SALE", "LAB_SHIPMENT", "LOSS", "OPERATIONAL"]
 _OUTBOUND_STATUSES = ["Pendente", "AguardandoAprovacao", "Concluida", "Rejeitada", "Cancelada", "FalhaNoProcessamento"]
+_OUTBOUND_TRANSITION_STATUSES = ["AguardandoAprovacao", "Rejeitada", "Cancelada"]
 
 
 def _get_outbound_endpoint() -> str:
@@ -541,51 +542,94 @@ def _get_outbound_process_endpoint() -> str:
     return _format_endpoint("outbound/process")
 
 
-def create_outbound(payload: Dict[str, Any]) -> Dict[str, Any]:
+def create_outbound(
+    payload: Dict[str, Any],
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Registrar uma saída. O backend define status inicial e solicitante via auth."""
     type_op = payload.get("type")
     if not type_op or str(type_op).strip() not in _OUTBOUND_TYPES:
         raise ValueError("Tipo de saída inválido. Use: " + ", ".join(_OUTBOUND_TYPES) + ".")
-    for field in ["product_id", "quantity", "user_id", "reason"]:
+    for field in ["product_id", "quantity", "reason"]:
         if not payload.get(field):
             raise ValueError("Campo obrigatório ausente: " + field)
     if not isinstance(payload.get("quantity"), int) or payload.get("quantity") <= 0:
         raise ValueError("Quantidade deve ser > 0")
     if payload.get("type") == "LOSS" and not (payload.get("justification") or "").strip():
         raise ValueError("Justificativa obrigatória para LOSS")
-    response = requests.post(_get_outbound_endpoint(), json=payload, timeout=10)
+    response = requests.post(
+        _get_outbound_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def list_outbounds(filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+def list_outbounds(
+    filters: Optional[Dict[str, Any]] = None,
+    auth_token: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     params = filters or {}
-    response = requests.get(_get_outbound_endpoint(), params=params, timeout=10)
+    response = requests.get(
+        _get_outbound_endpoint(),
+        params=params,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def get_outbound(outbound_id: int) -> Dict[str, Any]:
+def get_outbound(outbound_id: int, auth_token: Optional[str] = None) -> Dict[str, Any]:
     if not outbound_id:
         raise ValueError("outbound_id é obrigatório")
-    response = requests.get(_get_outbound_endpoint(), params={"id": int(outbound_id)}, timeout=10)
+    response = requests.get(
+        _get_outbound_endpoint(),
+        params={"id": int(outbound_id)},
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def update_outbound_status(outbound_id: int, status: str, user_id: Optional[int] = None) -> Dict[str, Any]:
+def update_outbound_status(
+    outbound_id: int,
+    status: str,
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Rejeitar/cancelar/solicitar aprovação. Conclusão usa ``process_outbound``."""
     if not outbound_id or not status:
         raise ValueError("outbound_id e status são obrigatórios")
-    if status not in _OUTBOUND_STATUSES:
-        raise ValueError("Status inválido")
+    if status not in _OUTBOUND_TRANSITION_STATUSES:
+        raise ValueError(
+            "Status inválido para transição. Use: "
+            + ", ".join(_OUTBOUND_TRANSITION_STATUSES)
+            + ". Para concluir, use process_outbound."
+        )
     payload = {"id": int(outbound_id), "status": status}
-    if user_id:
-        payload["user_id"] = int(user_id)
-    response = requests.patch(_get_outbound_status_endpoint(), json=payload, timeout=10)
+    response = requests.patch(
+        _get_outbound_status_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def process_outbound(outbound_id: int, user_id: int) -> Dict[str, Any]:
-    if not outbound_id or not user_id:
-        raise ValueError("outbound_id e user_id são obrigatórios")
-    payload = {"id": int(outbound_id), "user_id": int(user_id)}
-    response = requests.post(_get_outbound_process_endpoint(), json=payload, timeout=10)
+def process_outbound(
+    outbound_id: int,
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Processar a baixa. O operador é sempre o usuário autenticado no backend."""
+    if not outbound_id:
+        raise ValueError("outbound_id é obrigatório")
+    payload = {"id": int(outbound_id)}
+    response = requests.post(
+        _get_outbound_process_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 

@@ -10,10 +10,9 @@ O Smart Vision precisa consolidar o fluxo formal de saída de estoque para cobri
   - Nova tabela `stock_outbound` para registrar operações de saída com tipos (`SALE`, `LAB_SHIPMENT`, `LOSS`, `OPERATIONAL`), status (`Pendente`, `AguardandoAprovacao`, `Concluida`, `Rejeitada`, `Cancelada`, `FalhaNoProcessamento`), referências (venda/pedido/OS), usuário responsável e vínculo com o movimento de estoque gerado (`stock_movement_id`).
   - Endpoints XanoScript:
     - `POST /smart_vision/outbound` — Registrar/solicitar saída.
-    - `GET /smart_vision/outbound` — Listar e filtrar saídas.
-    - `GET /smart_vision/outbound/{id}` — Detalhes da operação.
-    - `PATCH /smart_vision/outbound/{id}/status` — Transição de estado (aprovação, rejeição, conclusão, cancelamento).
-    - `POST /smart_vision/outbound/{id}/process` — Processar a operação (efetiva a baixa via `stock_exit`).
+    - `GET /smart_vision/outbound` — Listar e filtrar saídas; com `id`, retornar o detalhe.
+    - `PATCH /smart_vision/outbound/status` — Solicitar aprovação, rejeitar ou cancelar (sem concluir).
+    - `POST /smart_vision/outbound/process` — Processar a operação (efetiva a baixa via `stock_movement`).
 - **Cliente Python (`services/xano_client.py`):**
   - Funções para registrar, listar, consultar, atualizar status e processar operações de saída.
 - **Frontend Streamlit (`app.py`):**
@@ -32,6 +31,6 @@ O Smart Vision precisa consolidar o fluxo formal de saída de estoque para cobri
 - Retorno automático de laboratório para estoque.
 
 ## Impact
-- **Xano / XanoScript:** 1 nova tabela + 5 endpoints.
-- **Python / Streamlit:** Expansão de cliente e UI.
-- **Documentação:** `docs/domain-model.md` atualizado.
+- **Xano / XanoScript:** 1 nova tabela + 4 endpoints (`GET/POST /outbound`, `PATCH /outbound/status`, `POST /outbound/process`).
+- **Python / Streamlit:** Expansão do cliente e da UI, com autenticação e gating de gestor.
+- **Documentação:** `docs/domain-model.md` atualizado com `stock_outbound` e suas transições.

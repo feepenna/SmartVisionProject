@@ -2387,61 +2387,14 @@ elif menu_option == "🚚 Saídas de Estoque":
     st.markdown('<div class="main-header">🚚 Gestão de Saídas de Estoque (Outbound Operations)</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Registro e processamento de saídas (Venda, Laboratório, Perda, Operacional) com bloqueio de saldo negativo e auditoria prévia.</div>', unsafe_allow_html=True)
 
-    # Estado de sessão local para saídas (fallback e histórico reativo)
-    if "local_outbounds" not in st.session_state:
-        st.session_state.local_outbounds = [
-            {
-                "id": 1,
-                "created_at": "2026-10-17 10:15:00",
-                "type": "SALE",
-                "status": "Concluida",
-                "product_id": 1,
-                "quantity": 1,
-                "user_id": 1,
-                "reason": "Venda Balcão PDV #10492",
-                "justification": None,
-                "reference_type": "SALE",
-                "reference_id": "V-10492",
-                "destination": None,
-                "stock_movement_id": 101,
-                "processed_at": "2026-10-17 10:15:02",
-                "approved_by": 1,
-            },
-            {
-                "id": 2,
-                "created_at": "2026-10-17 11:30:00",
-                "type": "LAB_SHIPMENT",
-                "status": "Concluida",
-                "product_id": 2,
-                "quantity": 2,
-                "user_id": 2,
-                "reason": "Envio para montagem de lentes em surfaçagem",
-                "justification": None,
-                "reference_type": "OS",
-                "reference_id": "OS-8831",
-                "destination": "Laboratório Central Essilor/Hoya",
-                "stock_movement_id": 102,
-                "processed_at": "2026-10-17 11:30:05",
-                "approved_by": 2,
-            },
-            {
-                "id": 3,
-                "created_at": "2026-10-17 11:45:00",
-                "type": "LOSS",
-                "status": "AguardandoAprovacao",
-                "product_id": 3,
-                "quantity": 1,
-                "user_id": 3,
-                "reason": "Avaria mecânica durante montagem no laboratório interno",
-                "justification": "Armação trincada no ajuste térmico da charneira esquerda. Inutilizada para venda.",
-                "reference_type": "OS",
-                "reference_id": "OS-8835",
-                "destination": "Descarte / Sucata Auditada",
-                "stock_movement_id": None,
-                "processed_at": None,
-                "approved_by": None,
-            }
-        ]
+    _outbound_user = st.session_state.get("auth_user") or {}
+    _outbound_token = st.session_state.get("auth_token")
+    _outbound_can_approve = _outbound_user.get("role") in ("Gestor", "admin")
+
+    _outbound_flash = st.session_state.pop("outbound_flash", None)
+    if _outbound_flash:
+        _flash_level, _flash_message = _outbound_flash
+        getattr(st, _flash_level)(_flash_message)
 
     # Carregar produtos disponíveis
     all_products = []
@@ -2463,15 +2416,17 @@ elif menu_option == "🚚 Saídas de Estoque":
     prod_map = {p["id"]: p for p in all_products}
     prod_options = {f"#{p['id']} - {p.get('name', 'Produto')} ({p.get('sku', '')}) [Saldo: {p.get('current_stock', 0)}]": p["id"] for p in all_products}
 
-    # KPIs de Saída
-    outbounds_list = st.session_state.local_outbounds
-    if xano_client:
+    # Saídas vêm exclusivamente do backend; não há estado local/mock para auditoria.
+    outbounds_list = []
+    if xano_client and _outbound_token:
         try:
-            remote_outbounds = xano_client.list_outbounds()
-            if remote_outbounds and isinstance(remote_outbounds, list):
+            remote_outbounds = xano_client.list_outbounds(auth_token=_outbound_token)
+            if isinstance(remote_outbounds, list):
                 outbounds_list = remote_outbounds
-        except Exception:
-            pass
+        except Exception as exc:
+            st.error("Não foi possível consultar as saídas no Xano: " + str(exc))
+    else:
+        st.error("Backend Xano ou sessão autenticada indisponível para o módulo de saídas.")
 
     total_ops = len(outbounds_list)
     pendentes_aprov = len([o for o in outbounds_list if o.get("status") in ["Pendente", "AguardandoAprovacao"]])
@@ -2541,7 +2496,21 @@ elif menu_option == "🚚 Saídas de Estoque":
             )
 
         with col_t2:
-            prod_sel_label = st.selectbox("Selecione o Produto:", options=list(prod_options.keys()), key="out_prod_sel")
+            prod_labels = list(prod_options.keys())
+            default_prod_index = next(
+                (
+                    i
+                    for i, p in enumerate(all_products)
+                    if p.get("current_stock", 0) > 0
+                ),
+                0,
+            )
+            prod_sel_label = st.selectbox(
+                "Selecione o Produto:",
+                options=prod_labels,
+                index=default_prod_index,
+                key="out_prod_sel",
+            )
             selected_pid = prod_options.get(prod_sel_label)
             selected_prod_obj = prod_map.get(selected_pid, {})
             current_avail = selected_prod_obj.get("current_stock", 0)
@@ -2549,13 +2518,23 @@ elif menu_option == "🚚 Saídas de Estoque":
         col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
             out_qty = st.number_input("Quantidade a Retirar:", min_value=1, max_value=max(1, current_avail), value=1, step=1, key="out_qty_input")
-            if out_qty > current_avail:
+            if current_avail <= 0:
+                st.warning("Produto sem saldo disponível. Selecione outro produto.")
+            elif out_qty > current_avail:
                 st.error(f"❌ Quantidade solicitada ({out_qty}) excede o saldo disponível ({current_avail})!")
             else:
                 st.caption(f"Saldo restante após baixa: **{current_avail - out_qty}** un.")
 
         with col_f2:
-            out_user_id = st.number_input("ID do Operador / Responsável:", min_value=1, value=1, step=1, key="out_user_input")
+            st.caption(
+                "Operador autenticado: "
+                + str(_outbound_user.get("name") or _outbound_user.get("email") or "sessão atual")
+                + f" (ID {_outbound_user.get('id', '-')})"
+            )
+            if _outbound_can_approve:
+                st.caption("Perfil com permissão de aprovação.")
+            else:
+                st.caption("Perdas exigirão aprovação de um Gestor/admin.")
 
         with col_f3:
             idempotency_key = st.text_input("Chave de Idempotência (Opcional):", value=f"OUT-{selected_pid}-{int(datetime.now().timestamp())}", key="out_idem_key")
@@ -2598,68 +2577,61 @@ elif menu_option == "🚚 Saídas de Estoque":
             )
 
         st.write("")
-        if st.button("🚀 Confirmar e Efetivar Saída de Estoque", type="primary", key="btn_confirm_out"):
-            # Validações prévias
-            if out_qty > current_avail:
+        if st.button(
+            "🚀 Confirmar e Efetivar Saída de Estoque",
+            type="primary",
+            key="btn_confirm_out",
+            disabled=current_avail <= 0,
+        ):
+            # Validações de UX; o backend continua sendo a autoridade final.
+            if not (xano_client and _outbound_token):
+                st.error("Backend Xano ou sessão autenticada indisponível para registrar a saída.")
+            elif out_qty > current_avail:
                 st.error("Operação bloqueada: o saldo em estoque é insuficiente para esta quantidade.")
             elif out_type == "LOSS" and not justification_input.strip():
                 st.error("A justificativa é obrigatória para registrar saídas do tipo PERDA (LOSS).")
             else:
-                # Regra: se for perda de valor, cria com status AguardandoAprovacao; se venda/lab, processa direto
-                initial_status = "AguardandoAprovacao" if out_type == "LOSS" else "Pendente"
                 payload_out = {
                     "type": out_type,
                     "product_id": int(selected_pid),
                     "quantity": int(out_qty),
-                    "user_id": int(out_user_id),
                     "reason": out_reason,
                     "justification": justification_input if justification_input.strip() else None,
                     "reference_type": ref_type,
                     "reference_id": ref_id,
                     "destination": dest,
                     "notes": out_notes if out_notes.strip() else None,
-                    "idempotency_key": idempotency_key,
-                    "status": initial_status
+                    "idempotency_key": idempotency_key or None,
                 }
 
                 try:
-                    res_create = None
-                    if xano_client:
-                        try:
-                            res_create = xano_client.create_outbound(payload_out)
-                        except Exception:
-                            res_create = None
+                    res_create = xano_client.create_outbound(
+                        payload_out,
+                        auth_token=_outbound_token,
+                    )
 
-                    if res_create is None:
-                        new_id = len(st.session_state.local_outbounds) + 1
-                        res_create = dict(payload_out, id=new_id, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-                    # Se for venda ou envio laboratório, processa a baixa de estoque imediatamente
-                    if out_type in ["SALE", "LAB_SHIPMENT", "OPERATIONAL"]:
-                        res_proc = None
-                        if xano_client and res_create.get("id"):
-                            try:
-                                res_proc = xano_client.process_outbound(res_create["id"], int(out_user_id))
-                            except Exception:
-                                res_proc = None
-
-                        res_create["status"] = "Concluida"
-                        res_create["processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        res_create["stock_movement_id"] = 100 + res_create["id"]
-                        res_create["approved_by"] = int(out_user_id)
-
-                        # Atualizar saldo localmente
-                        if selected_pid in prod_map:
-                            prod_map[selected_pid]["current_stock"] = max(0, current_avail - int(out_qty))
-
-                        st.success(f"✅ Saída #{res_create['id']} concluída com sucesso! Baixa no estoque efetivada (Movimento #{res_create['stock_movement_id']}).")
+                    if out_type == "LOSS":
+                        st.session_state.outbound_flash = (
+                            "info",
+                            f"⏳ Solicitação de perda #{res_create['id']} registrada e enviada "
+                            "para aprovação do gestor.",
+                        )
                     else:
-                        st.info(f"⏳ Solicitação de perda #{res_create['id']} registrada e enviada para aprovação do gestor.")
-
-                    st.session_state.local_outbounds.insert(0, res_create)
-                    st.rerun()
+                        res_proc = xano_client.process_outbound(
+                            res_create["id"],
+                            auth_token=_outbound_token,
+                        )
+                        movement = res_proc.get("movement") or {}
+                        movement_id = movement.get("id", "-")
+                        st.session_state.outbound_flash = (
+                            "success",
+                            f"✅ Saída #{res_create['id']} concluída com sucesso! "
+                            f"Baixa no estoque efetivada (Movimento #{movement_id}).",
+                        )
                 except Exception as ex:
-                    st.error(f"Erro ao registrar saída de estoque: {ex}")
+                    st.error(f"Erro ao registrar/processar saída de estoque: {ex}")
+                else:
+                    st.rerun()
 
     # 2. ABA DE HISTÓRICO & FILTROS
     with tab_hist:
@@ -2670,11 +2642,11 @@ elif menu_option == "🚚 Saídas de Estoque":
         with col_fil1:
             fil_type = st.selectbox("Filtrar por Tipo:", ["Todos", "SALE", "LAB_SHIPMENT", "LOSS", "OPERATIONAL"], key="fil_type_hist")
         with col_fil2:
-            fil_status = st.selectbox("Filtrar por Status:", ["Todos", "Concluida", "AguardandoAprovacao", "Pendente", "Rejeitada", "Cancelada"], key="fil_stat_hist")
+            fil_status = st.selectbox("Filtrar por Status:", ["Todos", "Concluida", "AguardandoAprovacao", "Pendente", "Rejeitada", "Cancelada", "FalhaNoProcessamento"], key="fil_stat_hist")
         with col_fil3:
             fil_search = st.text_input("Buscar por Referência / Motivo / OS:", value="", key="fil_srch_hist")
 
-        filtered_outbounds = st.session_state.local_outbounds
+        filtered_outbounds = list(outbounds_list)
         if fil_type != "Todos":
             filtered_outbounds = [o for o in filtered_outbounds if o.get("type") == fil_type]
         if fil_status != "Todos":
@@ -2688,12 +2660,16 @@ elif menu_option == "🚚 Saídas de Estoque":
         else:
             for out_item in filtered_outbounds:
                 p = prod_map.get(out_item.get("product_id"), {})
+                is_completed = out_item.get("status") == "Concluida"
+                qty_label = f"-{out_item.get('quantity')}" if is_completed else f"{out_item.get('quantity')}"
+                qty_color = "#dc2626" if is_completed else "#334155"
                 st_color = {
                     "Concluida": "#10b981",
                     "AguardandoAprovacao": "#f59e0b",
                     "Pendente": "#6366f1",
                     "Rejeitada": "#ef4444",
-                    "Cancelada": "#64748b"
+                    "Cancelada": "#64748b",
+                    "FalhaNoProcessamento": "#f97316"
                 }.get(out_item.get("status"), "#0f172a")
 
                 st.markdown(f"""
@@ -2710,7 +2686,7 @@ elif menu_option == "🚚 Saídas de Estoque":
                     </div>
                     <div style="margin-top:8px; font-size:0.92rem; color:#334155;">
                         <b>Produto:</b> {p.get('name', 'Produto')} ({p.get('sku', '')}) &nbsp;|&nbsp;
-                        <b>Qtd:</b> <span style="color:#dc2626; font-weight:700;">-{out_item.get('quantity')} un.</span> &nbsp;|&nbsp;
+                        <b>Qtd:</b> <span style="color:{qty_color}; font-weight:700;">{qty_label} un.</span> &nbsp;|&nbsp;
                         <b>Referência:</b> {out_item.get('reference_type', '')} {out_item.get('reference_id', '-')} &nbsp;|&nbsp;
                         <b>Operador:</b> User #{out_item.get('user_id')}
                     </div>
@@ -2728,19 +2704,31 @@ elif menu_option == "🚚 Saídas de Estoque":
         st.markdown("#### Central de Decisão e Aprovação Gerencial")
         st.markdown("Operações que exigem autorização expressa (como perdas e descartes de alto valor) antes do débito no estoque.")
 
-        pending_approval = [o for o in st.session_state.local_outbounds if o.get("status") in ["AguardandoAprovacao", "Pendente"]]
+        pending_approval = [
+            o
+            for o in outbounds_list
+            if o.get("status") in ("AguardandoAprovacao", "Pendente")
+        ]
         if not pending_approval:
             st.success("🎉 Nenhuma solicitação de saída pendente de aprovação no momento.")
         else:
+            if not _outbound_can_approve:
+                st.info(
+                    "Somente usuários com perfil Gestor/admin podem aprovar, rejeitar ou "
+                    "reprocessar saídas pendentes."
+                )
+
             for item in pending_approval:
                 p = prod_map.get(item.get("product_id"), {})
+                is_waiting = item.get("status") == "AguardandoAprovacao"
+                status_label = "Aguardando Gestor" if is_waiting else "Pendente de processamento"
                 st.markdown(f"""
                 <div style="border:1px solid #fcd34d; background:#fffdf5; border-radius:10px; padding:14px; margin-bottom:12px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
                             <span style="font-weight:700; color:#b45309; font-size:1.05rem;">Solicitação #{item.get('id')} — Tipo: {item.get('type')}</span>
                         </div>
-                        <span style="background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.85rem;">Aguardando Gestor</span>
+                        <span style="background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.85rem;">{status_label}</span>
                     </div>
                     <div style="margin-top:8px; font-size:0.92rem; color:#1e293b;">
                         <b>Produto:</b> {p.get('name', 'Produto')} ({p.get('sku', '')}) &nbsp;|&nbsp;
@@ -2756,32 +2744,69 @@ elif menu_option == "🚚 Saídas de Estoque":
                 </div>
                 """, unsafe_allow_html=True)
 
+                if not _outbound_can_approve:
+                    continue
+
                 col_b1, col_b2, col_b3 = st.columns([1, 1, 3])
                 with col_b1:
                     if st.button(f"✅ Aprovar & Baixar #{item.get('id')}", key=f"btn_aprov_{item.get('id')}", type="primary"):
-                        if xano_client:
+                        if not (xano_client and _outbound_token):
+                            st.error("Backend Xano ou sessão autenticada indisponível.")
+                        else:
                             try:
-                                xano_client.process_outbound(item.get("id"), user_id=1)
-                            except Exception:
-                                pass
-                        item["status"] = "Concluida"
-                        item["stock_movement_id"] = 100 + item.get("id")
-                        item["processed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        item["approved_by"] = 1
-                        st.success(f"Saída #{item.get('id')} aprovada e estoque baixado com sucesso!")
-                        st.rerun()
+                                xano_client.process_outbound(
+                                    item.get("id"),
+                                    auth_token=_outbound_token,
+                                )
+                            except Exception as ex:
+                                st.error(f"Erro ao aprovar/processar saída #{item.get('id')}: {ex}")
+                            else:
+                                st.session_state.outbound_flash = (
+                                    "success",
+                                    f"Saída #{item.get('id')} aprovada e estoque baixado com sucesso!",
+                                )
+                                st.rerun()
 
                 with col_b2:
-                    if st.button(f"❌ Rejeitar #{item.get('id')}", key=f"btn_rej_{item.get('id')}"):
-                        if xano_client:
+                    action_status = "Rejeitada" if is_waiting else "Cancelada"
+                    action_label = "❌ Rejeitar" if is_waiting else "✖️ Cancelar"
+                    action_key = "rej" if is_waiting else "cancel"
+                    if st.button(
+                        f"{action_label} #{item.get('id')}",
+                        key=f"btn_{action_key}_{item.get('id')}",
+                    ):
+                        if not (xano_client and _outbound_token):
+                            st.error("Backend Xano ou sessão autenticada indisponível.")
+                        else:
                             try:
-                                xano_client.update_outbound_status(item.get("id"), "Rejeitada", user_id=1)
-                            except Exception:
-                                pass
-                        item["status"] = "Rejeitada"
-                        item["approved_by"] = 1
-                        st.warning(f"Saída #{item.get('id')} rejeitada. O saldo em estoque permaneceu inalterado.")
-                        st.rerun()
+                                xano_client.update_outbound_status(
+                                    item.get("id"),
+                                    action_status,
+                                    auth_token=_outbound_token,
+                                )
+                            except Exception as ex:
+                                st.error(
+                                    f"Erro ao atualizar a saída #{item.get('id')} "
+                                    f"para {action_status}: {ex}"
+                                )
+                            else:
+                                if is_waiting:
+                                    flash_level = "warning"
+                                    flash_message = (
+                                        f"Saída #{item.get('id')} rejeitada. "
+                                        "O saldo em estoque permaneceu inalterado."
+                                    )
+                                else:
+                                    flash_level = "info"
+                                    flash_message = (
+                                        f"Saída #{item.get('id')} cancelada. "
+                                        "O saldo em estoque permaneceu inalterado."
+                                    )
+                                st.session_state.outbound_flash = (
+                                    flash_level,
+                                    flash_message,
+                                )
+                                st.rerun()
 
 
 # -----------------------------------------------------------------------------

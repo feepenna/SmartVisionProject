@@ -31,8 +31,9 @@ table stock_outbound {
     {type: "btree", field: [{name: "type", op: "asc"}]}
     {type: "btree", field: [{name: "status", op: "asc"}]}
     {type: "btree", field: [{name: "product_id", op: "asc"}]}
+    {type: "btree", field: [{name: "user_id", op: "asc"}]}
     {type: "btree", field: [{name: "created_at", op: "desc"}]}
-    {type: "btree", field: [{name: "idempotency_key", op: "asc"}]}
+    {type: "btree|unique", field: [{name: "idempotency_key", op: "asc"}]}
   ]
 
   tags = ["smart-vision"]
