@@ -11,7 +11,7 @@ import os
 from datetime import datetime, date, timedelta
 import streamlit as st
 
-# Carregar variáveis de ambiente do .env se existir
+# Carregar variáveis de ambiente do .env se existir localmente
 _env_file = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(_env_file):
     try:
@@ -23,6 +23,15 @@ if os.path.exists(_env_file):
                     os.environ.setdefault(_k.strip(), _v.strip())
     except Exception:
         pass
+
+# Sincronizar st.secrets com os.environ para deploys no Streamlit Cloud
+try:
+    if hasattr(st, "secrets"):
+        for _k, _v in st.secrets.items():
+            if isinstance(_v, str):
+                os.environ.setdefault(_k, _v)
+except Exception:
+    pass
 
 # Tentativa de importação do serviço Xano para o módulo de estoque
 try:
@@ -2009,6 +2018,15 @@ def _render_login_screen():
                 <p>Informe suas credenciais corporativas para acessar o portal.</p>
             </div>
             """, unsafe_allow_html=True)
+
+            _backend_configured = bool(
+                os.getenv("XANO_BASE_URL") or (hasattr(st, "secrets") and "XANO_BASE_URL" in st.secrets)
+            )
+            if not _backend_configured:
+                st.warning(
+                    "⚠️ **Conexão Xano não detectada no ambiente.**\n\n"
+                    "No Streamlit Cloud, adicione a chave `XANO_BASE_URL` em **App Settings > Secrets** para habilitar o login."
+                )
 
             # --- Campo Usuário ---
             st.markdown("""

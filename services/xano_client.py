@@ -17,10 +17,19 @@ import requests
 
 
 def get_base_url() -> str:
-    """Retrieve base URL from environment; raise a clear error if not set."""
+    """Retrieve base URL from environment or st.secrets; raise a clear error if not set."""
     base_url = os.getenv("XANO_BASE_URL")
     if not base_url:
-        raise EnvironmentError("Environment variable XANO_BASE_URL must be set to the Xano API base URL.")
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets") and "XANO_BASE_URL" in st.secrets:
+                base_url = str(st.secrets["XANO_BASE_URL"])
+        except Exception:
+            pass
+    if not base_url:
+        raise EnvironmentError(
+            "Environment variable XANO_BASE_URL must be set to the Xano API base URL."
+        )
     return base_url.rstrip("/")
 
 
@@ -927,6 +936,13 @@ def _get_auth_base_url() -> str:
     Override opcional via ``XANO_AUTH_BASE_URL`` (ex.: proxy próprio).
     """
     override = os.getenv("XANO_AUTH_BASE_URL")
+    if not override:
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets") and "XANO_AUTH_BASE_URL" in st.secrets:
+                override = str(st.secrets["XANO_AUTH_BASE_URL"])
+        except Exception:
+            pass
     if override and override.strip():
         return override.strip().rstrip("/")
     base = get_base_url()
@@ -1001,6 +1017,13 @@ def _get_members_base_url() -> str:
     Override opcional via ``XANO_MEMBERS_BASE_URL``.
     """
     override = os.getenv("XANO_MEMBERS_BASE_URL")
+    if not override:
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets") and "XANO_MEMBERS_BASE_URL" in st.secrets:
+                override = str(st.secrets["XANO_MEMBERS_BASE_URL"])
+        except Exception:
+            pass
     if override and override.strip():
         return override.strip().rstrip("/")
     base = get_base_url()
