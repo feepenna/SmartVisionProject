@@ -1,6 +1,8 @@
 // Listar contagens físicas de um inventário (Change 03)
-query inventory_counts verb=GET {
+// Permissão: qualquer usuário autenticado. Leitura; não altera estoque.
+query "inventories/counts" verb=GET {
   api_group = "Smart Vision"
+  auth = "user"
 
   input {
     int inventory_id
@@ -25,8 +27,9 @@ query inventory_counts verb=GET {
       return = {type: "list"}
     } as $counts
 
-    response = (($counts != null) ? $counts : [])
-    tags = ["smart-vision"]
-    guid = "inventory_count_list_guid_001"
   }
+
+  response = $counts
+  tags = ["smart-vision"]
+  guid = "inventory_count_list_guid_001"
 }

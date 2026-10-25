@@ -33,6 +33,13 @@ def _format_endpoint(path: str) -> str:
     return f"{base}/smart_vision/{clean_path}"
 
 
+def _auth_headers(auth_token: Optional[str]) -> Dict[str, str]:
+    """Montar o header de autenticação quando um token estiver disponível."""
+    if not auth_token:
+        return {}
+    return {"Authorization": f"Bearer {auth_token}"}
+
+
 def _get_products_endpoint() -> str:
     return _format_endpoint("products")
 
@@ -178,28 +185,42 @@ def record_stock_exit(payload: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 _VALID_INVENTORY_STATUSES = ["Aberto", "EmContagem", "AguardandoAprovacao", "Concluido"]
+_VALID_INVENTORY_SCOPES = ["completo", "categoria", "localizacao"]
 _VALID_DISCREPANCY_ACTIONS = ["approved", "rejected", "recount_requested"]
 
 
-def list_inventories(filters: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+def list_inventories(
+    filters: Optional[Dict[str, str]] = None,
+    auth_token: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Listar inventários físicos.
 
     Args:
         filters: Filtros opcionais (ex: ``{"status": "Aberto", "opened_by": "1"}``).
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Lista de inventários conforme retornado pelo Xano.
     """
     params = filters or {}
-    response = requests.get(_get_inventories_endpoint(), params=params, timeout=10)
+    response = requests.get(
+        _get_inventories_endpoint(),
+        params=params,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def get_inventory(inventory_id: int) -> Dict[str, Any]:
+def get_inventory(
+    inventory_id: int,
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Consultar detalhes de um inventário, incluindo progresso da contagem.
 
     Args:
         inventory_id: ID do inventário.
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Detalhe do inventário com progresso de contagem.
@@ -209,17 +230,22 @@ def get_inventory(inventory_id: int) -> Dict[str, Any]:
     response = requests.get(
         _get_inventory_endpoint(),
         params={"id": int(inventory_id)},
+        headers=_auth_headers(auth_token),
         timeout=10,
     )
     return _handle_response(response)
 
 
-def create_inventory(payload: Dict[str, Any]) -> Dict[str, Any]:
+def create_inventory(
+    payload: Dict[str, Any],
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Criar um novo inventário físico com status ``Aberto``.
 
     Args:
         payload: Dicionário com ``scope``, ``opened_by`` e opcionais
         ``status``, ``category_filter``, ``location_filter``, ``notes``.
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Registro do inventário criado.
@@ -227,24 +253,41 @@ def create_inventory(payload: Dict[str, Any]) -> Dict[str, Any]:
     scope = payload.get("scope")
     if not scope or not str(scope).strip():
         raise ValueError("O escopo do inventário é obrigatório.")
+    if scope not in _VALID_INVENTORY_SCOPES:
+        raise ValueError("Escopo inválido. Use: " + ", ".join(_VALID_INVENTORY_SCOPES) + ".")
     if not payload.get("opened_by"):
         raise ValueError("O responsável pela abertura (opened_by) é obrigatório.")
     status = payload.get("status", "Aberto")
-    if status not in _VALID_INVENTORY_STATUSES:
-        raise ValueError("Status inválido. Use: " + ", ".join(_VALID_INVENTORY_STATUSES) + ".")
+    if status != "Aberto":
+        raise ValueError("O inventário deve ser criado com status Aberto.")
+    if scope == "categoria" and not str(payload.get("category_filter") or "").strip():
+        raise ValueError("Informe a categoria (category_filter) quando o escopo for categoria.")
+    if scope == "localizacao" and not str(payload.get("location_filter") or "").strip():
+        raise ValueError("Informe a localização (location_filter) quando o escopo for localizacao.")
 
-    response = requests.post(_get_inventories_endpoint(), json=payload, timeout=10)
+    response = requests.post(
+        _get_inventories_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def transition_inventory_status(inventory_id: int, status: str, user_id: int) -> Dict[str, Any]:
+def transition_inventory_status(
+    inventory_id: int,
+    status: str,
+    user_id: int,
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Efetuar uma transição de estado do ciclo de vida do inventário.
 
     Args:
         inventory_id: ID do inventário.
         status: Status destino (``Aberto``, ``EmContagem``,
             ``AguardandoAprovacao`` ou ``Concluido``).
-        user_id: Usuário que solicita a transição.
+        user_id: Usuário que solicita a transição (deve ser o autenticado).
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Inventário atualizado.
@@ -261,17 +304,26 @@ def transition_inventory_status(inventory_id: int, status: str, user_id: int) ->
         "status": status,
         "user_id": int(user_id),
     }
-    response = requests.patch(_get_inventory_status_endpoint(), json=payload, timeout=10)
+    response = requests.patch(
+        _get_inventory_status_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def record_inventory_count(payload: Dict[str, Any]) -> Dict[str, Any]:
+def record_inventory_count(
+    payload: Dict[str, Any],
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Registrar ou retomar a contagem física de um produto em um inventário.
 
     Args:
         payload: Dicionário com ``inventory_id``, ``product_id``,
         ``quantity_counted``, ``counted_by`` e opcionais ``is_recount``,
         ``previous_count_id``, ``notes``.
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Registro da contagem criada ou atualizada.
@@ -283,15 +335,24 @@ def record_inventory_count(payload: Dict[str, Any]) -> Dict[str, Any]:
     if quantity is None or not isinstance(quantity, int) or quantity < 0:
         raise ValueError("A quantidade contada deve ser um número inteiro maior ou igual a zero.")
 
-    response = requests.post(_get_inventory_counts_endpoint(), json=payload, timeout=10)
+    response = requests.post(
+        _get_inventory_counts_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def list_inventory_counts(inventory_id: int) -> List[Dict[str, Any]]:
+def list_inventory_counts(
+    inventory_id: int,
+    auth_token: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Listar as contagens físicas de um inventário.
 
     Args:
         inventory_id: ID do inventário.
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Lista de contagens, mais recente primeiro.
@@ -301,19 +362,25 @@ def list_inventory_counts(inventory_id: int) -> List[Dict[str, Any]]:
     response = requests.get(
         _get_inventory_counts_endpoint(),
         params={"inventory_id": str(int(inventory_id))},
+        headers=_auth_headers(auth_token),
         timeout=10,
     )
     return _handle_response(response)
 
 
-def reconcile_inventory(inventory_id: int, user_id: int) -> Dict[str, Any]:
+def reconcile_inventory(
+    inventory_id: int,
+    user_id: int,
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Executar a conciliação de estoque de um inventário.
 
     Compara as contagens físicas com os saldos do sistema e gera as divergências.
 
     Args:
         inventory_id: ID do inventário.
-        user_id: Usuário que solicita a conciliação.
+        user_id: Usuário que solicita a conciliação (deve ser o autenticado).
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Resultado da conciliação.
@@ -327,16 +394,26 @@ def reconcile_inventory(inventory_id: int, user_id: int) -> Dict[str, Any]:
         "inventory_id": int(inventory_id),
         "user_id": int(user_id),
     }
-    response = requests.post(_get_inventory_reconcile_endpoint(), json=payload, timeout=10)
+    response = requests.post(
+        _get_inventory_reconcile_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def list_discrepancies(inventory_id: int, status: Optional[str] = None) -> List[Dict[str, Any]]:
+def list_discrepancies(
+    inventory_id: int,
+    status: Optional[str] = None,
+    auth_token: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Listar as divergências de conciliação de um inventário.
 
     Args:
         inventory_id: ID do inventário.
         status: Filtrar por status da divergência (opcional).
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Lista de divergências.
@@ -346,11 +423,19 @@ def list_discrepancies(inventory_id: int, status: Optional[str] = None) -> List[
     params: Dict[str, str] = {"inventory_id": str(int(inventory_id))}
     if status:
         params["status"] = status
-    response = requests.get(_get_inventory_discrepancies_endpoint(), params=params, timeout=10)
+    response = requests.get(
+        _get_inventory_discrepancies_endpoint(),
+        params=params,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def decide_discrepancy(payload: Dict[str, Any]) -> Dict[str, Any]:
+def decide_discrepancy(
+    payload: Dict[str, Any],
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Registrar a decisão de um gestor sobre uma divergência.
 
     Ações: ``approved``, ``rejected`` ou ``recount_requested``.
@@ -358,6 +443,7 @@ def decide_discrepancy(payload: Dict[str, Any]) -> Dict[str, Any]:
     Args:
         payload: Dicionário com ``inventory_id``, ``discrepancy_id``, ``action``,
         ``decided_by`` e opcional ``justification``.
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Divergência atualizada com a decisão.
@@ -368,12 +454,24 @@ def decide_discrepancy(payload: Dict[str, Any]) -> Dict[str, Any]:
     action = payload.get("action")
     if action not in _VALID_DISCREPANCY_ACTIONS:
         raise ValueError("Ação inválida. Use: " + ", ".join(_VALID_DISCREPANCY_ACTIONS) + ".")
+    if action in ["approved", "rejected"]:
+        if not str(payload.get("justification") or "").strip():
+            raise ValueError("Justificativa é obrigatória para aprovar ou rejeitar uma divergência.")
 
-    response = requests.post(_get_inventory_discrepancy_decision_endpoint(), json=payload, timeout=10)
+    response = requests.post(
+        _get_inventory_discrepancy_decision_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 
-def apply_adjustments(inventory_id: int, user_id: int) -> Dict[str, Any]:
+def apply_adjustments(
+    inventory_id: int,
+    user_id: int,
+    auth_token: Optional[str] = None,
+) -> Dict[str, Any]:
     """Aplicar os ajustes de estoque aprovados de um inventário.
 
     Reutiliza o ledger de auditoria existente (tabela ``stock_movement``,
@@ -381,7 +479,8 @@ def apply_adjustments(inventory_id: int, user_id: int) -> Dict[str, Any]:
 
     Args:
         inventory_id: ID do inventário.
-        user_id: Usuário gestor que aplica os ajustes.
+        user_id: Usuário gestor que aplica os ajustes (deve ser o autenticado).
+        auth_token: Token Bearer do usuário autenticado (obrigatório no backend).
 
     Returns:
         Resumo dos ajustes aplicados e ignorados (concorrência).
@@ -395,7 +494,12 @@ def apply_adjustments(inventory_id: int, user_id: int) -> Dict[str, Any]:
         "inventory_id": int(inventory_id),
         "user_id": int(user_id),
     }
-    response = requests.post(_get_inventory_apply_adjustments_endpoint(), json=payload, timeout=10)
+    response = requests.post(
+        _get_inventory_apply_adjustments_endpoint(),
+        json=payload,
+        headers=_auth_headers(auth_token),
+        timeout=10,
+    )
     return _handle_response(response)
 
 

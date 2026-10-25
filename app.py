@@ -1663,14 +1663,41 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
     discrepancies = _inv_state("inv_discrepancies")
     decisions = _inv_state("inv_decisions")
 
+    # Usuário autenticado (a validação real de permissão é sempre no backend).
+    _inv_user = st.session_state.auth_user or {}
+    _inv_user_id = int(_inv_user.get("id") or 0)
+    _inv_user_name = _inv_user.get("name") or _inv_user.get("email") or "Usuário"
+    _inv_user_role = _inv_user.get("role") or ""
+    _inv_is_manager = _inv_user_role in ["Gestor", "admin"]
+
     def _inv_real(fn, *args, **kwargs):
-        """Tenta chamada real ao Xano; retorna None se indisponível (usa mock)."""
+        """Tenta chamada real ao Xano.
+
+        Retorna None quando o backend não está configurado/indisponível (permite
+        fallback local de demonstração) ou quando o backend rejeitou a operação
+        (erro HTTP; nesse caso o fallback não deve ser usado).
+        """
+        st.session_state.pop("inv_http_error", None)
         if not (xano_client and os.getenv("XANO_BASE_URL")):
             _inv_show_xano_warning()
             return None
+        auth_token = st.session_state.get("auth_token")
+        if auth_token and "auth_token" not in kwargs:
+            kwargs["auth_token"] = auth_token
         try:
             return fn(*args, **kwargs)
         except Exception as exc:
+            response = getattr(exc, "response", None)
+            if response is not None:
+                message = str(exc)
+                try:
+                    payload = response.json()
+                    message = payload.get("message") or message
+                except Exception:
+                    pass
+                st.session_state["inv_http_error"] = message
+                st.error("Erro do backend: " + message)
+                return None
             st.session_state["inv_xano_warning"] = str(exc)
             _inv_show_xano_warning()
             return None
@@ -1710,13 +1737,28 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
             for inv in inventories:
                 inv_id = inv.get("id")
                 inv_counts_list = [c for c in counts if c.get("inventory_id") == inv_id]
+                registered = inv.get("counts_recorded")
+                if registered is None:
+                    registered = len(inv_counts_list)
+                scope_total = inv.get("products_in_scope")
+                if scope_total is None:
+                    category_filter = inv.get("category_filter")
+                    location_filter = inv.get("location_filter")
+                    scope_total = len([
+                        p for p in products
+                        if (not category_filter or p.get("category") == category_filter)
+                        and (not location_filter or p.get("location") == location_filter)
+                    ])
+                progress = round((registered * 100) / scope_total, 1) if scope_total else 0.0
                 rows.append({
                     "ID": inv_id,
                     "Status": inv.get("status"),
                     "Escopo": inv.get("scope"),
                     "Responsável (usuario_id)": inv.get("opened_by"),
                     "Abertura": str(inv.get("opened_at", ""))[:16],
-                    "Contagens registradas": len(inv_counts_list),
+                    "Contagens registradas": registered,
+                    "Produtos no escopo": scope_total,
+                    "Progresso (%)": f"{progress:.1f}%",
                 })
             st.dataframe(rows, use_container_width=True, hide_index=True)
 
@@ -1734,7 +1776,9 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
             c1, c2 = st.columns(2)
             with c1:
                 scope = st.selectbox("Escopo do inventário:", options=["completo", "categoria", "localizacao"], key="inv_c_scope")
-                opened_by = st.number_input("Usuário responsável (ID):", min_value=1, value=1, step=1, key="inv_c_user")
+                st.caption("Responsável pela abertura")
+                st.markdown("**" + _inv_user_name + "** (ID " + str(_inv_user_id) + ")")
+                opened_by = _inv_user_id
             with c2:
                 category_filter = st.text_input("Categoria (filtro):", placeholder="ex: Armação", key="inv_c_cat")
                 location_filter = st.text_input("Localização (filtro):", placeholder="ex: Gaveta A1", key="inv_c_loc")
@@ -1742,25 +1786,31 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
             criar = st.form_submit_button("Criar Inventário", type="primary")
 
         if criar:
-            payload = {
-                "scope": scope,
-                "opened_by": int(opened_by),
-                "status": "Aberto",
-                "category_filter": category_filter if category_filter else None,
-                "location_filter": location_filter if location_filter else None,
-                "notes": notes if notes else None,
-            }
-            res = _inv_real(xano_client.create_inventory, payload)
-            if res is None:
-                # Fallback local para demonstração/offline
-                new_id = max([i.get("id", 0) for i in inventories] or [0]) + 1
-                new_inv = dict(payload, id=new_id, opened_at=str(datetime.now()))
+            if _inv_user_id <= 0:
+                st.error("Sessão sem usuário identificado. Faça login novamente.")
             else:
-                new_inv = res
+                payload = {
+                    "scope": scope,
+                    "opened_by": int(opened_by),
+                    "status": "Aberto",
+                    "category_filter": category_filter if category_filter else None,
+                    "location_filter": location_filter if location_filter else None,
+                    "notes": notes if notes else None,
+                }
+                res = _inv_real(xano_client.create_inventory, payload)
+                if res is None and st.session_state.get("inv_http_error"):
+                    new_inv = None
+                elif res is None:
+                    # Fallback local para demonstração/offline
+                    new_id = max([i.get("id", 0) for i in inventories] or [0]) + 1
+                    new_inv = dict(payload, id=new_id, opened_at=str(datetime.now()))
+                else:
+                    new_inv = res
 
-            _inv_save("inv_inventories", inventories + [new_inv])
-            st.success("✅ Inventário #" + str(new_inv.get("id")) + " criado com status " + str(new_inv.get("status")) + ".")
-            st.session_state["inv_selected_id"] = new_inv.get("id")
+                if new_inv is not None:
+                    _inv_save("inv_inventories", inventories + [new_inv])
+                    st.success("✅ Inventário #" + str(new_inv.get("id")) + " criado com status " + str(new_inv.get("status")) + ".")
+                    st.session_state["inv_selected_id"] = new_inv.get("id")
 
     # ------------------- 3. Contagem Física -------------------
     with sub_tabs[2]:
@@ -1793,21 +1843,26 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
             with c1:
                 qty = st.number_input("Quantidade física encontrada:", min_value=0, value=0, step=1, key="inv_count_qty")
             with c2:
-                counted_by = st.number_input("Usuário que conta (ID):", min_value=1, value=1, step=1, key="inv_count_user")
+                st.caption("Contado por")
+                st.markdown("**" + _inv_user_name + "** (ID " + str(_inv_user_id) + ")")
+            counted_by = _inv_user_id
             is_recount = st.checkbox("Esta é uma recontagem (preserva o registro anterior)", key="inv_count_recount")
             count_notes = st.text_area("Observações / justificativas:", key="inv_count_notes")
 
             if st.button("Registrar Contagem", type="primary", key="inv_count_reg"):
-                if inv_for_count.get("status") not in ["Aberto", "EmContagem"]:
+                if _inv_user_id <= 0:
+                    st.error("Sessão sem usuário identificado. Faça login novamente.")
+                elif inv_for_count.get("status") not in ["Aberto", "EmContagem"]:
                     st.error("Não é possível contar: inventário não está em contagem.")
                 else:
                     # Iniciar contagem: mover para EmContagem se ainda estiver Aberto
                     if inv_for_count.get("status") == "Aberto":
-                        _inv_real(xano_client.transition_inventory_status, selected_id, "EmContagem", int(counted_by))
-                        for i in inventories:
-                            if i.get("id") == selected_id:
-                                i["status"] = "EmContagem"
-                        _inv_save("inv_inventories", inventories)
+                        transition_res = _inv_real(xano_client.transition_inventory_status, selected_id, "EmContagem", int(counted_by))
+                        if transition_res is not None or not st.session_state.get("inv_http_error"):
+                            for i in inventories:
+                                if i.get("id") == selected_id:
+                                    i["status"] = "EmContagem"
+                            _inv_save("inv_inventories", inventories)
 
                     payload = {
                         "inventory_id": int(selected_id),
@@ -1818,23 +1873,26 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                         "notes": count_notes if count_notes else None,
                     }
                     res = _inv_real(xano_client.record_inventory_count, payload)
-                    if res is None:
+                    if res is None and st.session_state.get("inv_http_error"):
+                        new_count = None
+                    elif res is None:
                         new_count = dict(payload, id=len(counts) + 1, counted_at=str(datetime.now()))
                     else:
                         new_count = res
 
-                    # Atualizar ou adicionar na lista
-                    existing_idx = None
-                    for idx, c in enumerate(counts):
-                        if c.get("inventory_id") == selected_id and c.get("product_id") == prod_id and not c.get("is_recount"):
-                            existing_idx = idx
-                            break
-                    if existing_idx is not None and not is_recount:
-                        counts[existing_idx] = new_count
-                    else:
-                        counts.append(new_count)
-                    _inv_save("inv_counts", counts)
-                    st.success("✅ Contagem registrada: " + str(qty) + " un para " + str(prod.get("name")) + ".")
+                    if new_count is not None:
+                        # Atualizar ou adicionar na lista
+                        existing_idx = None
+                        for idx, c in enumerate(counts):
+                            if c.get("inventory_id") == selected_id and c.get("product_id") == prod_id and not c.get("is_recount"):
+                                existing_idx = idx
+                                break
+                        if existing_idx is not None and not is_recount:
+                            counts[existing_idx] = new_count
+                        else:
+                            counts.append(new_count)
+                        _inv_save("inv_counts", counts)
+                        st.success("✅ Contagem registrada: " + str(qty) + " un para " + str(prod.get("name")) + ".")
 
             st.markdown("#### Contagens já registradas neste inventário")
             inv_counts_list = [c for c in counts if c.get("inventory_id") == selected_id]
@@ -1867,14 +1925,21 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
             st.write("**Inventário #" + str(selected_id) + "** — Status: " + str(inv.get("status") if inv else "?"))
 
             if st.button("Executar Conciliação", type="primary", key="inv_reconcile"):
-                res = _inv_real(xano_client.reconcile_inventory, selected_id, 1)
+                if _inv_user_id <= 0:
+                    st.error("Sessão sem usuário identificado. Faça login novamente.")
+                    res = None
+                else:
+                    res = _inv_real(xano_client.reconcile_inventory, selected_id, _inv_user_id)
                 if res is not None:
                     st.success("✅ Conciliação executada. Status do inventário: " + str(res.get("status")) + ".")
+                    if inv:
+                        inv["status"] = res.get("status", "AguardandoAprovacao")
+                        _inv_save("inv_inventories", inventories)
                     real_disc = _inv_real(xano_client.list_discrepancies, selected_id)
                     if real_disc is not None:
                         discrepancies = real_disc
                         _inv_save("inv_discrepancies", discrepancies)
-                else:
+                elif _inv_user_id > 0 and not st.session_state.get("inv_http_error"):
                     # Fallback local de conciliação
                     inv_counts_list = [c for c in counts if c.get("inventory_id") == selected_id]
                     disc_list = []
@@ -1950,8 +2015,12 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
         if not selected_id:
             st.warning("Selecione um inventário na aba de listagem primeiro.")
         else:
-            inv_discs = [d for d in discrepancies if d.get("inventory_id") == selected_id and d.get("status") == "pending"]
-            if not inv_discs:
+            inv_discs = []
+            if _inv_is_manager:
+                inv_discs = [d for d in discrepancies if d.get("inventory_id") == selected_id and d.get("status") == "pending"]
+            if not _inv_is_manager:
+                st.warning("Seu perfil (" + (_inv_user_role or "sem perfil") + ") não permite aprovar divergências. Apenas Gestor/Admin podem decidir (validação feita no backend).")
+            elif not inv_discs:
                 st.info("Não há divergências pendentes de decisão neste inventário.")
             else:
                 st.write("Divergências aguardando decisão do gestor:")
@@ -1978,7 +2047,7 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                                     "inventory_id": selected_id,
                                     "discrepancy_id": int(d.get("id")),
                                     "action": "approved",
-                                    "decided_by": 1,
+                                    "decided_by": _inv_user_id,
                                     "justification": "Aprovação de divergência de inventário.",
                                 })
                                 if res is not None:
@@ -1987,7 +2056,7 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                                             discrepancies[idx] = res
                                             break
                                     _inv_save("inv_discrepancies", discrepancies)
-                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "approved", "decided_by": 1, "decided_at": str(datetime.now()), "justification": "Aprovação de divergência de inventário.", "previous_status": "pending"})
+                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "approved", "decided_by": _inv_user_id, "decided_at": str(datetime.now()), "justification": "Aprovação de divergência de inventário.", "previous_status": "pending"})
                                     _inv_save("inv_decisions", decisions)
                                     st.success("Divergência aprovada.")
                                     st.rerun()
@@ -1998,7 +2067,7 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                                     "inventory_id": selected_id,
                                     "discrepancy_id": int(d.get("id")),
                                     "action": "rejected",
-                                    "decided_by": 1,
+                                    "decided_by": _inv_user_id,
                                     "justification": rej_just if rej_just else "Rejeitada pelo gestor.",
                                 })
                                 if res is not None:
@@ -2007,7 +2076,7 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                                             discrepancies[idx] = res
                                             break
                                     _inv_save("inv_discrepancies", discrepancies)
-                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "rejected", "decided_by": 1, "decided_at": str(datetime.now()), "justification": rej_just if rej_just else "Rejeitada pelo gestor.", "previous_status": "pending"})
+                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "rejected", "decided_by": _inv_user_id, "decided_at": str(datetime.now()), "justification": rej_just if rej_just else "Rejeitada pelo gestor.", "previous_status": "pending"})
                                     _inv_save("inv_decisions", decisions)
                                     st.success("Divergência rejeitada (nenhum ajuste gerado).")
                                     st.rerun()
@@ -2017,7 +2086,7 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                                     "inventory_id": selected_id,
                                     "discrepancy_id": int(d.get("id")),
                                     "action": "recount_requested",
-                                    "decided_by": 1,
+                                    "decided_by": _inv_user_id,
                                     "justification": "Recontagem solicitada pelo gestor.",
                                 })
                                 if res is not None:
@@ -2026,7 +2095,7 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                                             discrepancies[idx] = res
                                             break
                                     _inv_save("inv_discrepancies", discrepancies)
-                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "recount_requested", "decided_by": 1, "decided_at": str(datetime.now()), "justification": "Recontagem solicitada pelo gestor.", "previous_status": "pending"})
+                                    decisions.append({"inventory_id": selected_id, "product_id": d.get("product_id"), "discrepancy_id": d.get("id"), "action": "recount_requested", "decided_by": _inv_user_id, "decided_at": str(datetime.now()), "justification": "Recontagem solicitada pelo gestor.", "previous_status": "pending"})
                                     _inv_save("inv_decisions", decisions)
                                     for i in inventories:
                                         if i.get("id") == selected_id:
@@ -2044,17 +2113,51 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
         if not selected_id:
             st.warning("Selecione um inventário na aba de listagem primeiro.")
         else:
-            if st.button("🔄 Aplicar Ajustes Aprovados ao Estoque", type="primary", key="inv_apply"):
-                res = _inv_real(xano_client.apply_adjustments, selected_id, 1)
-                if res is not None:
-                    st.success("✅ " + str(res.get("message", "")) + " Aplicados: " + str(res.get("applied")) + ", Ignorados (concorrência): " + str(res.get("skipped")) + ".")
-                    # Atualizar mock de produtos e discrepâncias
-                    products = _inv_products()
-                    product_by_id = {p["id"]: p for p in products}
-                    real_disc = _inv_real(xano_client.list_discrepancies, selected_id)
-                    if real_disc is not None:
-                        discrepancies = real_disc
-                        _inv_save("inv_discrepancies", discrepancies)
+            inv_record = next((i for i in inventories if i.get("id") == selected_id), None)
+            if not _inv_is_manager:
+                st.info("Aplicar ajustes e concluir o inventário é restrito a Gestor/Admin. A validação real é feita no backend.")
+            else:
+                action_col1, action_col2 = st.columns(2)
+                with action_col1:
+                    if st.button("🔄 Aplicar Ajustes Aprovados ao Estoque", type="primary", key="inv_apply"):
+                        if _inv_user_id <= 0:
+                            st.error("Sessão sem usuário identificado. Faça login novamente.")
+                        else:
+                            res = _inv_real(xano_client.apply_adjustments, selected_id, _inv_user_id)
+                            if res is not None:
+                                st.success("✅ " + str(res.get("message", "")) + " Aplicados: " + str(res.get("applied")) + ", Ignorados (concorrência): " + str(res.get("skipped")) + ", Já aplicados: " + str(res.get("already_applied", 0)) + ".")
+                                # Atualizar produtos e divergências; se houve conflito, o
+                                # backend reabriu o inventário para recontagem.
+                                products = _inv_products()
+                                product_by_id = {p["id"]: p for p in products}
+                                if res.get("skipped", 0) > 0 and inv_record:
+                                    inv_record["status"] = "EmContagem"
+                                    _inv_save("inv_inventories", inventories)
+                                real_disc = _inv_real(xano_client.list_discrepancies, selected_id)
+                                if real_disc is not None:
+                                    discrepancies = real_disc
+                                    _inv_save("inv_discrepancies", discrepancies)
+
+                with action_col2:
+                    if not inv_record or inv_record.get("status") != "AguardandoAprovacao":
+                        st.caption("Concluir fica disponível quando o inventário estiver em AguardandoAprovacao.")
+                    elif st.button("🏁 Concluir Inventário", key="inv_conclude"):
+                        if _inv_user_id <= 0:
+                            st.error("Sessão sem usuário identificado. Faça login novamente.")
+                        else:
+                            res = _inv_real(xano_client.transition_inventory_status, selected_id, "Concluido", _inv_user_id)
+                            if res is not None:
+                                inv_record["status"] = "Concluido"
+                                inv_record["closed_at"] = res.get("closed_at") if isinstance(res, dict) else None
+                                _inv_save("inv_inventories", inventories)
+                                st.success("Inventário concluído. Nenhuma alteração retroativa é permitida.")
+                                st.rerun()
+                            elif not (xano_client and os.getenv("XANO_BASE_URL")):
+                                # Modo demonstração sem backend: mantém a navegação local.
+                                inv_record["status"] = "Concluido"
+                                _inv_save("inv_inventories", inventories)
+                                st.success("Inventário concluído (simulação local).")
+                                st.rerun()
 
             st.markdown("#### Decisões tomadas")
             inv_decisions = [d for d in decisions if d.get("inventory_id") == selected_id]

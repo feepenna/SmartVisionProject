@@ -37,11 +37,12 @@ class TestInventoryClient(unittest.TestCase):
         ]
         mock_get.return_value = mock_response
 
-        result = xano_client.list_inventories()
+        result = xano_client.list_inventories(auth_token="test-token")
 
         mock_get.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories",
             params={},
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(len(result), 1)
@@ -54,11 +55,12 @@ class TestInventoryClient(unittest.TestCase):
         mock_response.json.return_value = {"id": 3, "status": "EmContagem"}
         mock_get.return_value = mock_response
 
-        result = xano_client.get_inventory(3)
+        result = xano_client.get_inventory(3, auth_token="test-token")
 
         mock_get.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventory",
             params={"id": 3},
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result["id"], 3)
@@ -81,11 +83,12 @@ class TestInventoryClient(unittest.TestCase):
         mock_post.return_value = mock_response
 
         payload = {"scope": "completo", "opened_by": 1, "notes": "Inventário mensal outubro"}
-        result = xano_client.create_inventory(payload)
+        result = xano_client.create_inventory(payload, auth_token="test-token")
 
         mock_post.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories",
             json=payload,
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result["status"], "Aberto")
@@ -102,7 +105,23 @@ class TestInventoryClient(unittest.TestCase):
 
         with self.assertRaises(ValueError) as ctx:
             xano_client.create_inventory({"scope": "completo", "opened_by": 1, "status": "Invalido"})
-        self.assertIn("Status inválido", str(ctx.exception))
+        self.assertIn("status Aberto", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.create_inventory({"scope": "invalido", "opened_by": 1})
+        self.assertIn("Escopo inválido", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.create_inventory({"scope": "completo", "opened_by": 1, "status": "EmContagem"})
+        self.assertIn("status Aberto", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.create_inventory({"scope": "categoria", "opened_by": 1})
+        self.assertIn("category_filter", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            xano_client.create_inventory({"scope": "localizacao", "opened_by": 1})
+        self.assertIn("location_filter", str(ctx.exception))
 
     # ------------------------------------------------------------------ #
     # transition_inventory_status
@@ -114,11 +133,12 @@ class TestInventoryClient(unittest.TestCase):
         mock_response.json.return_value = {"id": 1, "status": "EmContagem"}
         mock_patch.return_value = mock_response
 
-        result = xano_client.transition_inventory_status(1, "EmContagem", 2)
+        result = xano_client.transition_inventory_status(1, "EmContagem", 2, auth_token="test-token")
 
         mock_patch.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories/status",
             json={"id": 1, "status": "EmContagem", "user_id": 2},
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result["status"], "EmContagem")
@@ -148,11 +168,12 @@ class TestInventoryClient(unittest.TestCase):
             "inventory_id": 1, "product_id": 2, "quantity_counted": 8,
             "counted_by": 1, "is_recount": False,
         }
-        result = xano_client.record_inventory_count(payload)
+        result = xano_client.record_inventory_count(payload, auth_token="test-token")
 
         mock_post.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories/counts",
             json=payload,
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result["quantity_counted"], 8)
@@ -182,11 +203,12 @@ class TestInventoryClient(unittest.TestCase):
         mock_response.json.return_value = [{"id": 11, "inventory_id": 1, "product_id": 2, "quantity_counted": 8}]
         mock_get.return_value = mock_response
 
-        result = xano_client.list_inventory_counts(1)
+        result = xano_client.list_inventory_counts(1, auth_token="test-token")
 
         mock_get.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories/counts",
             params={"inventory_id": "1"},
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(len(result), 1)
@@ -201,11 +223,12 @@ class TestInventoryClient(unittest.TestCase):
         mock_response.json.return_value = {"inventory_id": 1, "status": "AguardandoAprovacao"}
         mock_post.return_value = mock_response
 
-        result = xano_client.reconcile_inventory(1, 2)
+        result = xano_client.reconcile_inventory(1, 2, auth_token="test-token")
 
         mock_post.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories/reconcile",
             json={"inventory_id": 1, "user_id": 2},
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result["status"], "AguardandoAprovacao")
@@ -228,11 +251,12 @@ class TestInventoryClient(unittest.TestCase):
         ]
         mock_get.return_value = mock_response
 
-        result = xano_client.list_discrepancies(1, status="pending")
+        result = xano_client.list_discrepancies(1, status="pending", auth_token="test-token")
 
         mock_get.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories/discrepancies",
             params={"inventory_id": "1", "status": "pending"},
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result[0]["divergence_type"], "shortage")
@@ -255,11 +279,12 @@ class TestInventoryClient(unittest.TestCase):
             "inventory_id": 1, "discrepancy_id": 1, "action": "approved",
             "decided_by": 2, "justification": "Conferido e confirmado.",
         }
-        result = xano_client.decide_discrepancy(payload)
+        result = xano_client.decide_discrepancy(payload, auth_token="test-token")
 
         mock_post.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories/discrepancies/decision",
             json=payload,
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result["status"], "approved")
@@ -272,6 +297,14 @@ class TestInventoryClient(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             xano_client.decide_discrepancy({"inventory_id": 1, "discrepancy_id": 1, "action": "aprovar", "decided_by": 2})
         self.assertIn("Ação inválida", str(ctx.exception))
+
+        for action in ["approved", "rejected"]:
+            with self.assertRaises(ValueError) as ctx:
+                xano_client.decide_discrepancy({
+                    "inventory_id": 1, "discrepancy_id": 1,
+                    "action": action, "decided_by": 2,
+                })
+            self.assertIn("Justificativa", str(ctx.exception))
 
     # ------------------------------------------------------------------ #
     # apply_adjustments
@@ -286,11 +319,12 @@ class TestInventoryClient(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        result = xano_client.apply_adjustments(1, 2)
+        result = xano_client.apply_adjustments(1, 2, auth_token="test-token")
 
         mock_post.assert_called_once_with(
             "https://mock.xano.io/api/smart_vision/inventories/apply-adjustments",
             json={"inventory_id": 1, "user_id": 2},
+            headers={"Authorization": "Bearer test-token"},
             timeout=10,
         )
         self.assertEqual(result["applied"], 2)

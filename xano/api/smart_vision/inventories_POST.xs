@@ -1,55 +1,77 @@
 // Criar um novo inventário físico (Change 03)
-// Status inicial: Aberto. Reutiliza usuário existente (Change 02: user_id como parâmetro).
+// Permissão: qualquer usuário autenticado; opened_by é sempre $auth.id. Não altera saldo.
+// Status inicial obrigatório: Aberto. Escopo: completo | categoria | localizacao.
+// Valida o usuário responsável e exige o filtro correspondente ao escopo.
 query inventories verb=POST {
   api_group = "Smart Vision"
+  auth = "user"
 
   input {
-    text? status filters=trim
+    text? status? filters=trim
     text scope filters=trim
-    text? category_filter filters=trim
-    text? location_filter filters=trim
-    int opened_by
-    text? notes filters=trim
+    text? category_filter? filters=trim
+    text? location_filter? filters=trim
+    int? opened_by?
+    text? notes? filters=trim
   }
 
   stack {
-    // 1. Validar responsável pela abertura
-    precondition ($input.opened_by != null) {
-      error_type = "inputerror"
-      error = "O responsável pela abertura do inventário é obrigatório."
+    // 0. O responsável é sempre o usuário autenticado (não confiar no cliente).
+    precondition ($input.opened_by == null || $input.opened_by == $auth.id) {
+      error_type = "accessdenied"
+      error = "O responsável pela abertura deve ser o usuário autenticado."
     }
 
-    // 2. Validar escopo
-    precondition ($input.scope != null && $input.scope != "") {
+    // 1. Escopo e status inicial
+    precondition ($input.scope == "completo" || $input.scope == "categoria" || $input.scope == "localizacao") {
       error_type = "inputerror"
-      error = "O escopo do inventário é obrigatório (completo, categoria ou localizacao)."
+      error = "Escopo inválido. Use: completo, categoria ou localizacao."
     }
 
-    // 3. Validar status, se informado
+    precondition ($input.status == null || $input.status == "" || $input.status == "Aberto") {
+      error_type = "inputerror"
+      error = "Um inventário deve ser criado com status Aberto."
+    }
+
+    // 2. Filtro obrigatório conforme o escopo
     conditional {
-      if ($input.status != null && $input.status != "") {
-        precondition ($input.status == "Aberto" || $input.status == "EmContagem" || $input.status == "AguardandoAprovacao" || $input.status == "Concluido") {
+      if ($input.scope == "categoria") {
+        precondition ($input.category_filter != null && $input.category_filter != "") {
           error_type = "inputerror"
-          error = "Status inválido. Use: Aberto, EmContagem, AguardandoAprovacao ou Concluido."
+          error = "Informe a categoria do inventário quando o escopo for categoria."
         }
       }
     }
 
-    var $effective_status {
-      value = $input.status
-      if ($effective_status == null || $effective_status == "") {
-        value = "Aberto"
+    conditional {
+      if ($input.scope == "localizacao") {
+        precondition ($input.location_filter != null && $input.location_filter != "") {
+          error_type = "inputerror"
+          error = "Informe a localização do inventário quando o escopo for localizacao."
+        }
       }
+    }
+
+    // 3. Responsável pela abertura deve existir (sempre o usuário autenticado)
+    db.get user {
+      field_name = "id"
+      field_value = $auth.id
+      output = ["id", "name", "role"]
+    } as $responsible
+
+    precondition ($responsible != null) {
+      error_type = "notfound"
+      error = "Usuário responsável não encontrado."
     }
 
     // 4. Inserir o inventário
     db.add inventory {
       data = {
-        status: $effective_status
+        status: "Aberto"
         scope: $input.scope
         category_filter: $input.category_filter
         location_filter: $input.location_filter
-        opened_by: $input.opened_by
+        opened_by: $auth.id
         opened_at: "now"
         closed_at: null
         notes: $input.notes
