@@ -6,6 +6,7 @@ incorporando branding exclusivo (#3942F6, #F8B807, #F8FAFC), metas dinâmicas,
 mural de RH, central de documentos, Academia SmartVision e atalhos operacionais.
 """
 
+import html
 import os
 from datetime import datetime, date, timedelta
 import streamlit as st
@@ -46,302 +47,1432 @@ st.set_page_config(
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
     :root {
+        --sv-primary: #3942F6;
+        --sv-primary-hover: #252CD6;
+        --sv-primary-deep: #1E25B6;
+        --sv-primary-soft: #EEF0FF;
+        --sv-secondary: #F8B807;
+        --sv-secondary-soft: #FFF8DB;
+        --sv-bg: #F4F6FB;
+        --sv-surface: #FFFFFF;
+        --sv-surface-muted: #F8FAFC;
+        --sv-text: #0F172A;
+        --sv-muted: #64748B;
+        --sv-muted-light: #94A3B8;
+        --sv-border: #E2E8F0;
+        --sv-success: #10B981;
+        --sv-warning: #F59E0B;
+        --sv-danger: #EF4444;
+        --sv-shadow-sm: 0 2px 6px -1px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.03);
+        --sv-shadow-md: 0 8px 24px -6px rgba(15, 23, 42, 0.08), 0 2px 8px -2px rgba(15, 23, 42, 0.04);
+        --sv-shadow-lg: 0 24px 48px -18px rgba(30, 37, 182, 0.22), 0 8px 20px -8px rgba(15, 23, 42, 0.08);
         --primary-color: #3942F6;
         --secondary-color: #F8B807;
-        --bg-color: #F1F2F4;
+        --bg-color: #F4F6FB;
         --text-main: #0F172A;
         --text-muted: #64748B;
         --card-bg: #FFFFFF;
         --border-color: #E2E8F0;
     }
 
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-        margin: 0;
-        padding: 0;
-        background: #F1F2F4;
+    html, body, .stApp, [class*="css"], .stMarkdown {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        color: var(--sv-text);
     }
 
-    /* Oculta chrome do Streamlit (header, toolbar, deploy button) */
-    header, [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], .stDeployButton {
+    html, body { background: var(--sv-bg) !important; }
+
+    .stApp {
+        background-color: var(--sv-bg) !important;
+        background-image:
+            radial-gradient(circle at 4% -4%, rgba(57, 66, 246, 0.08), transparent 30rem),
+            radial-gradient(circle at 96% 4%, rgba(248, 184, 7, 0.07), transparent 26rem),
+            linear-gradient(180deg, #F7F8FC 0%, #F1F3F9 100%) !important;
+        background-attachment: fixed !important;
+    }
+
+    [data-testid="stAppViewContainer"] { background: transparent !important; }
+
+    /* Chrome do Streamlit */
+    header[data-testid="stHeader"] {
+        display: block !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        background: transparent !important;
+        pointer-events: none !important;
+    }
+
+    [data-testid="stToolbar"] {
+        display: flex !important;
+        width: 100% !important;
+        background: transparent !important;
+        pointer-events: none !important;
+    }
+
+    [data-testid="stDecoration"],
+    [data-testid="stStatusWidget"],
+    .stDeployButton,
+    #MainMenu,
+    footer {
         display: none !important;
     }
 
-    /* Header Superior */
+    /* Controle de reabertura da sidebar */
+    button[data-testid="stExpandSidebarButton"] {
+        position: fixed !important;
+        top: 16px !important;
+        left: 16px !important;
+        z-index: 1000000 !important;
+        width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 12px !important;
+        background: rgba(255, 255, 255, 0.96) !important;
+        color: var(--sv-text) !important;
+        box-shadow: 0 12px 24px -14px rgba(15, 23, 42, 0.45) !important;
+        pointer-events: auto !important;
+        backdrop-filter: blur(10px);
+        transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease !important;
+    }
+
+    button[data-testid="stExpandSidebarButton"]:hover {
+        background: #FFFFFF !important;
+        box-shadow: 0 16px 28px -14px rgba(57, 66, 246, 0.38) !important;
+        transform: translateY(-1px);
+    }
+
+    button[data-testid="stExpandSidebarButton"] span {
+        color: var(--sv-text) !important;
+        font-size: 1.2rem !important;
+    }
+
+    .main .block-container,
+    [data-testid="stMainBlockContainer"] {
+        max-width: 1480px !important;
+        padding: 1.5rem 2rem 3.5rem 2rem !important;
+        background: transparent !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Inter', sans-serif !important;
+        color: var(--sv-text) !important;
+        letter-spacing: -0.025em;
+    }
+
+    .stMarkdown h2 { font-size: 1.35rem !important; font-weight: 700 !important; margin-top: 1.3rem !important; }
+    .stMarkdown h3 { font-size: 1.12rem !important; font-weight: 700 !important; margin-top: 1.15rem !important; }
+    .stMarkdown h4 { font-size: 1rem !important; font-weight: 700 !important; }
+    .stMarkdown p, .stMarkdown li { color: #334155; line-height: 1.65; }
+    .stCaptionContainer, [data-testid="stCaptionContainer"] { color: var(--sv-muted) !important; }
+    a { color: var(--sv-primary) !important; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    hr, .stDivider { border-color: var(--sv-border) !important; }
+
+    /* ==============================================================
+       HERO EXECUTIVO
+       ============================================================== */
     .portal-header {
-        background: linear-gradient(135deg, #3942F6 0%, #2027C9 100%);
-        border-radius: 16px;
-        padding: 24px 32px;
-        color: white;
-        margin-bottom: 24px;
-        box-shadow: 0 10px 25px -5px rgba(57, 66, 246, 0.25);
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 84% 12%, rgba(248, 184, 7, 0.18), transparent 18rem),
+            linear-gradient(125deg, #222AD7 0%, #3942F6 46%, #1D24B4 100%);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 24px;
+        padding: 28px 32px;
+        color: #FFFFFF;
+        margin-bottom: 22px;
+        box-shadow: 0 24px 48px -18px rgba(30, 37, 182, 0.42), 0 8px 18px -8px rgba(15, 23, 42, 0.16);
+        animation: sv-rise 0.45s ease-out both;
+    }
+
+    .portal-header::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+        background-size: 32px 32px;
+        mask-image: linear-gradient(105deg, transparent 24%, rgba(0, 0, 0, 0.7) 75%, transparent 100%);
+        -webkit-mask-image: linear-gradient(105deg, transparent 24%, rgba(0, 0, 0, 0.7) 75%, transparent 100%);
+    }
+
+    .portal-header::after {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        width: 310px;
+        height: 310px;
+        right: -90px;
+        top: -190px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 50%;
+        box-shadow: 0 0 0 46px rgba(255, 255, 255, 0.035), 0 0 0 92px rgba(255, 255, 255, 0.02);
+    }
+
+    .portal-header-inner {
+        position: relative;
+        z-index: 1;
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 24px;
     }
 
-    .brand-title {
-        font-size: 1.8rem;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+    .brand-lockup { display: flex; align-items: center; gap: 16px; min-width: 280px; }
 
-    .brand-subtitle {
-        font-size: 0.95rem;
-        opacity: 0.85;
-        margin-top: 4px;
-    }
-
-    /* Notificações e Badge Amarelo (#F8B807) */
-    .notification-pill {
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 30px;
-        padding: 8px 16px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: white;
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-
-    .badge-yellow {
-        background-color: #F8B807;
-        color: #0F172A;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-    }
-
-    /* Card de Perfil do Colaborador */
-    .profile-card {
-        background: white;
-        color: var(--text-main);
-        border-radius: 12px;
-        padding: 10px 18px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        border: 1px solid var(--border-color);
-    }
-
-    .profile-avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: #3942F6;
-        color: white;
+    .brand-mark {
+        width: 56px;
+        height: 56px;
+        flex: 0 0 56px;
+        border-radius: 17px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 1.2rem;
-        border: 2px solid #F8B807;
+        background: rgba(255, 255, 255, 0.13);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 8px 20px rgba(15, 23, 42, 0.12);
+        backdrop-filter: blur(10px);
     }
 
-    /* Cartões & Widgets */
-    .metric-widget {
-        background: white;
-        border: 1px solid var(--border-color);
+    .brand-mark svg { width: 31px; height: 31px; color: #FFFFFF; }
+
+    .brand-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 4px;
+        font-size: 0.65rem;
+        line-height: 1;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.68);
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #46E6A5;
+        box-shadow: 0 0 0 3px rgba(70, 230, 165, 0.16);
+    }
+
+    .brand-title {
+        margin: 0 !important;
+        font-size: 2rem !important;
+        line-height: 1.05 !important;
+        font-weight: 800 !important;
+        color: #FFFFFF !important;
+        letter-spacing: -0.045em !important;
+    }
+
+    .brand-title .brand-accent { color: #FFD54A; }
+
+    .brand-subtitle {
+        margin-top: 6px;
+        font-size: 0.86rem;
+        line-height: 1.4;
+        color: rgba(255, 255, 255, 0.74);
+        font-weight: 400;
+        max-width: 430px;
+    }
+
+    .hero-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 11px;
+    }
+
+    .hero-meta-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+    .hero-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 30px;
+        padding: 6px 11px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        backdrop-filter: blur(8px);
+    }
+
+    .hero-chip svg { width: 13px; height: 13px; opacity: 0.8; }
+
+    .notification-pill {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 7px 12px !important;
+        border: 1px solid rgba(255, 255, 255, 0.17) !important;
+        border-radius: 999px !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.74rem !important;
+        font-weight: 600 !important;
+        backdrop-filter: blur(8px);
+    }
+
+    .badge-yellow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 21px;
+        height: 21px;
+        padding: 0 6px !important;
+        border-radius: 999px !important;
+        background: var(--sv-secondary) !important;
+        color: #392900 !important;
+        font-size: 0.7rem !important;
+        font-weight: 800 !important;
+        line-height: 1 !important;
+        box-shadow: 0 2px 8px rgba(248, 184, 7, 0.25);
+    }
+
+    .profile-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 258px;
+        padding: 10px 13px !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        border-radius: 15px !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #FFFFFF !important;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+        backdrop-filter: blur(14px);
+    }
+
+    .profile-avatar {
+        width: 42px !important;
+        height: 42px !important;
+        flex: 0 0 42px;
+        border-radius: 13px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #FFD65A 0%, #F8B807 100%) !important;
+        color: #2D2200 !important;
+        font-weight: 800 !important;
+        font-size: 1rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.14);
+    }
+
+    .profile-name { font-weight: 700 !important; font-size: 0.86rem !important; color: #FFFFFF !important; line-height: 1.3; }
+    .profile-role { font-size: 0.72rem !important; color: rgba(255, 255, 255, 0.7) !important; font-weight: 500 !important; line-height: 1.4; }
+    .profile-store { font-size: 0.67rem !important; color: rgba(255, 255, 255, 0.54) !important; line-height: 1.4; }
+
+    /* ==============================================================
+       CABEÇALHO DE PÁGINA
+       ============================================================== */
+    .page-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        margin: 2px 0 22px 0;
+        padding: 2px 2px 0 2px;
+        animation: sv-rise 0.4s ease-out both;
+    }
+
+    .page-heading-icon {
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--sv-border);
         border-radius: 14px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: var(--sv-surface);
+        box-shadow: var(--sv-shadow-sm);
+        font-size: 1.28rem;
+        line-height: 1;
+    }
+
+    .page-heading-copy { min-width: 0; padding-top: 1px; }
+
+    .page-heading-eyebrow {
+        margin-bottom: 5px;
+        color: var(--sv-primary);
+        font-size: 0.64rem;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }
+
+    .page-heading-title {
+        margin: 0 !important;
+        color: var(--sv-text) !important;
+        font-size: 1.48rem !important;
+        line-height: 1.15 !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.035em !important;
+    }
+
+    .page-heading-subtitle {
+        max-width: 760px;
+        margin: 5px 0 0 0 !important;
+        color: var(--sv-muted) !important;
+        font-size: 0.86rem !important;
+        line-height: 1.55 !important;
+        font-weight: 400 !important;
+    }
+
+    .today-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border: 1px solid var(--sv-border);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--sv-muted);
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        box-shadow: var(--sv-shadow-sm);
+    }
+
+    /* ==============================================================
+       CARDS E MÉTRICAS
+       ============================================================== */
+    .metric-widget {
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        background: var(--sv-surface) !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 17px !important;
+        padding: 20px 21px !important;
+        box-shadow: var(--sv-shadow-sm) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+    }
+
+    .metric-widget::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 20px;
+        right: 20px;
+        height: 2px;
+        border-radius: 0 0 4px 4px;
+        background: linear-gradient(90deg, var(--sv-primary), rgba(57, 66, 246, 0.08));
+        opacity: 0.7;
     }
 
     .metric-widget:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+        transform: translateY(-3px) !important;
+        border-color: rgba(57, 66, 246, 0.2) !important;
+        box-shadow: 0 14px 30px -10px rgba(57, 66, 246, 0.16), 0 4px 10px -4px rgba(15, 23, 42, 0.05) !important;
     }
 
-    .metric-title {
-        color: var(--text-muted);
-        font-size: 0.85rem;
-        font-weight: 600;
+    .metric-title, .metric-label {
+        display: block;
+        margin-bottom: 9px !important;
+        color: var(--sv-muted) !important;
+        font-size: 0.68rem !important;
+        font-weight: 700 !important;
+        line-height: 1.35 !important;
+        letter-spacing: 0.075em !important;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
     }
 
     .metric-value {
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: #0F172A;
+        color: var(--sv-text) !important;
+        font-size: 1.82rem !important;
+        font-weight: 800 !important;
+        line-height: 1.08 !important;
+        letter-spacing: -0.04em !important;
     }
 
     .metric-sub {
-        font-size: 0.85rem;
-        color: #10B981;
-        font-weight: 600;
-        margin-top: 6px;
         display: flex;
         align-items: center;
-        gap: 4px;
-    }
-
-    /* Barra de Progresso Customizada com Patamares */
-    .progress-container {
-        background: #E2E8F0;
-        border-radius: 12px;
-        height: 24px;
-        width: 100%;
-        position: relative;
-        overflow: hidden;
-        margin: 14px 0 8px 0;
-    }
-
-    .progress-fill {
-        background: linear-gradient(90deg, #3942F6 0%, #5B63F8 70%, #F8B807 100%);
-        height: 100%;
-        border-radius: 12px;
-        transition: width 0.5s ease-in-out;
-    }
-
-    /* Banner Prioritário Urgente */
-    .urgent-banner {
-        background: #FFFBEB;
-        border: 2px solid #F8B807;
-        border-left: 8px solid #F8B807;
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        color: #92400E;
-    }
-
-    /* Estilo de Avisos e Cards */
-    .notice-card {
-        background: white;
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 18px;
-        margin-bottom: 14px;
-        border-left: 5px solid #3942F6;
-    }
-
-    .tag-category {
-        display: inline-block;
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 3px 10px;
-        border-radius: 20px;
-        margin-bottom: 8px;
-    }
-
-    .tag-rh { background: #EEF2FF; color: #3942F6; }
-    .tag-operacional { background: #FEF3C7; color: #B45309; }
-    .tag-produtos { background: #ECFDF5; color: #047857; }
-    .tag-formacao { background: #F3E8FF; color: #7E22CE; }
-
-    /* Botões Rápidos */
-    .action-btn {
-        background: #3942F6;
-        color: white;
-        border-radius: 10px;
-        padding: 12px;
-        font-weight: 600;
-        text-align: center;
-    }
-
-    /* ===== Change 05: Alertas e Reposição ===== */
-    .main-header {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #1a2233;
-        margin-bottom: 0.25rem;
-        letter-spacing: -0.5px;
-    }
-
-    .sub-header {
-        font-size: 1.02rem;
-        color: #64748b;
-        margin-bottom: 1.5rem;
-        font-weight: 400;
+        gap: 5px;
+        margin-top: 8px !important;
+        color: var(--sv-success) !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        line-height: 1.4;
     }
 
     .kpi-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 1.2rem;
-        text-align: center;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: hidden;
         height: 100%;
+        background: var(--sv-surface) !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 17px !important;
+        padding: 19px 20px !important;
+        text-align: left !important;
+        box-shadow: var(--sv-shadow-sm) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .kpi-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 20px;
+        right: 20px;
+        height: 2px;
+        border-radius: 0 0 4px 4px;
+        background: linear-gradient(90deg, var(--sv-primary), rgba(57, 66, 246, 0.08));
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(57, 66, 246, 0.2);
+        box-shadow: 0 14px 30px -12px rgba(57, 66, 246, 0.16);
     }
 
     .kpi-title {
-        font-size: 0.7rem;
-        font-weight: 700;
+        margin-bottom: 8px !important;
+        color: var(--sv-muted) !important;
+        font-size: 0.66rem !important;
+        font-weight: 700 !important;
+        line-height: 1.35 !important;
+        letter-spacing: 0.08em !important;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #64748b;
-        margin-bottom: 0.4rem;
     }
 
     .kpi-value {
-        font-size: 1.9rem;
-        font-weight: 800;
-        color: #1a2233;
-        line-height: 1.1;
+        color: var(--sv-text) !important;
+        font-size: 1.9rem !important;
+        font-weight: 800 !important;
+        line-height: 1.05 !important;
+        letter-spacing: -0.04em !important;
     }
 
     .kpi-delta {
-        font-size: 0.78rem;
-        margin-top: 0.25rem;
-        font-weight: 600;
+        margin-top: 7px !important;
+        color: var(--sv-muted) !important;
+        font-size: 0.72rem !important;
+        font-weight: 500 !important;
     }
 
-    .metric-label {
-        font-size: 0.8rem;
-        color: #64748b;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.35rem;
+    /* Métricas nativas do Streamlit */
+    [data-testid="stMetric"] {
+        position: relative;
+        overflow: hidden;
+        min-height: 118px;
+        padding: 17px 18px !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 16px !important;
+        background: var(--sv-surface) !important;
+        box-shadow: var(--sv-shadow-sm) !important;
     }
+
+    [data-testid="stMetric"]::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 18px;
+        right: 18px;
+        height: 2px;
+        background: linear-gradient(90deg, var(--sv-primary), rgba(57, 66, 246, 0.05));
+        opacity: 0.75;
+    }
+
+    [data-testid="stMetricLabel"] p {
+        color: var(--sv-muted) !important;
+        font-size: 0.68rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.065em !important;
+        text-transform: uppercase;
+        line-height: 1.4 !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--sv-text) !important;
+        font-size: 1.55rem !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.035em !important;
+    }
+
+    [data-testid="stMetricDelta"] { font-size: 0.73rem !important; font-weight: 600 !important; }
+
+    /* ==============================================================
+       AVISOS, STATUS E ALERTAS
+       ============================================================== */
+    .notice-card, .alert-card {
+        position: relative;
+        background: var(--sv-surface) !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 15px !important;
+        padding: 17px 18px !important;
+        margin-bottom: 11px !important;
+        box-shadow: var(--sv-shadow-sm) !important;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .notice-card { border-left-width: 4px !important; }
+
+    .notice-card:hover, .alert-card:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--sv-shadow-md) !important;
+        border-color: #CBD5E1 !important;
+    }
+
+    .notice-card h4, .alert-card h4 { margin: 7px 0 7px 0 !important; font-size: 0.97rem !important; }
+    .notice-card p { margin-bottom: 0 !important; }
+
+    .tag-category {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 3px 9px !important;
+        border: 1px solid transparent;
+        border-radius: 999px !important;
+        margin-bottom: 7px !important;
+        font-size: 0.63rem !important;
+        font-weight: 800 !important;
+        line-height: 1 !important;
+        letter-spacing: 0.07em !important;
+        text-transform: uppercase;
+    }
+
+    .tag-rh { background: #EEF0FF !important; color: #3038D5 !important; border-color: #DDE1FF !important; }
+    .tag-operacional { background: #FFF8DB !important; color: #946200 !important; border-color: #FDE68A !important; }
+    .tag-produtos { background: #EAFBF3 !important; color: #067A55 !important; border-color: #C7F4DF !important; }
+    .tag-formacao { background: #F5EDFF !important; color: #6D28D9 !important; border-color: #E9D5FF !important; }
 
     .status-badge {
-        display: inline-block;
-        padding: 0.2rem 0.65rem;
-        border-radius: 20px;
-        font-size: 0.7rem;
-        font-weight: 700;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 5px;
+        min-height: 23px;
+        padding: 3px 9px !important;
+        border: 1px solid transparent;
+        border-radius: 999px !important;
+        font-size: 0.63rem !important;
+        font-weight: 800 !important;
+        line-height: 1 !important;
+        letter-spacing: 0.065em !important;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        white-space: nowrap;
     }
 
-    .status-warning { background: #FEF3C7; color: #92400E; }
-    .status-success { background: #D1FAE5; color: #065F46; }
-    .status-danger { background: #FEE2E2; color: #991B1B; }
-    .status-info { background: #DBEAFE; color: #1E40AF; }
+    .status-badge::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        flex: 0 0 5px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.85;
+    }
 
-    .alert-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-left: 5px solid #e2e8f0;
+    .status-warning { background: #FFF7E6 !important; color: #9A6200 !important; border-color: #FDE68A !important; }
+    .status-success { background: #EAFBF3 !important; color: #047857 !important; border-color: #C7F4DF !important; }
+    .status-danger { background: #FFF0F0 !important; color: #B42318 !important; border-color: #FECACA !important; }
+    .status-info { background: #EEF0FF !important; color: #3038D5 !important; border-color: #DDE1FF !important; }
+
+    .alert-critico { border-left: 4px solid var(--sv-danger) !important; }
+    .alert-insuficiente { border-left: 4px solid var(--sv-warning) !important; }
+    .alert-regular { border-left: 4px solid var(--sv-success) !important; }
+
+    .urgent-banner {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px 18px !important;
+        margin-bottom: 18px !important;
+        border: 1px solid #FDE68A !important;
+        border-left: 4px solid var(--sv-secondary) !important;
+        border-radius: 15px !important;
+        background: linear-gradient(135deg, #FFFDF4 0%, #FFF8DB 100%) !important;
+        color: #6B4700 !important;
+        box-shadow: 0 6px 18px -10px rgba(180, 130, 0, 0.25);
+    }
+
+    /* Cards de dados / histórico / aprovação */
+    .data-card {
+        position: relative;
+        padding: 16px 18px;
+        margin-bottom: 11px;
+        border: 1px solid var(--sv-border);
+        border-radius: 15px;
+        background: var(--sv-surface);
+        box-shadow: var(--sv-shadow-sm);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .data-card:hover {
+        transform: translateY(-1px);
+        border-color: #CBD5E1;
+        box-shadow: var(--sv-shadow-md);
+    }
+
+    .data-card--warning {
+        border-color: #FDE68A;
+        background: linear-gradient(135deg, #FFFEFA 0%, #FFFBF0 100%);
+    }
+
+    .data-card--success {
+        border-color: #C7F4DF;
+        background: linear-gradient(135deg, #FFFFFF 0%, #F3FCF8 100%);
+    }
+
+    .data-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .data-card-title {
+        color: var(--sv-text);
+        font-size: 0.95rem;
+        font-weight: 700;
+        line-height: 1.4;
+    }
+
+    .data-card-meta {
+        margin-top: 5px;
+        color: var(--sv-muted);
+        font-size: 0.78rem;
+        line-height: 1.55;
+    }
+
+    .data-card-body {
+        margin-top: 9px;
+        color: #334155;
+        font-size: 0.83rem;
+        line-height: 1.65;
+    }
+
+    .module-empty {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 22px 24px;
+        margin-top: 8px;
+        border: 1px solid #FDE68A;
+        border-left: 4px solid var(--sv-secondary);
+        border-radius: 16px;
+        background: linear-gradient(135deg, #FFFEFA 0%, #FFF9E8 100%);
+        box-shadow: var(--sv-shadow-sm);
+    }
+
+    .module-empty-icon {
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #FDE68A;
         border-radius: 12px;
-        padding: 0.95rem 1.15rem;
-        margin-bottom: 0.55rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        background: #FFFFFF;
+        font-size: 1.1rem;
     }
 
-    .alert-critico { border-left-color: #DC2626; }
-    .alert-insuficiente { border-left-color: #D97706; }
-    .alert-regular { border-left-color: #059669; }
+    .module-empty-title {
+        margin-bottom: 5px;
+        color: #713F12;
+        font-size: 0.95rem;
+        font-weight: 800;
+        letter-spacing: -0.015em;
+    }
+
+    .module-empty-text {
+        max-width: 780px;
+        margin: 0;
+        color: #854D0E;
+        font-size: 0.82rem;
+        line-height: 1.6;
+    }
+
+    .type-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border: 1px solid #DDE1FF;
+        border-radius: 999px;
+        background: #EEF0FF;
+        color: #3038D5;
+        font-size: 0.63rem;
+        font-weight: 800;
+        letter-spacing: 0.055em;
+        line-height: 1;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .audit-note {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-left: 3px solid var(--sv-warning);
+        border-radius: 7px;
+        background: #FFFBEB;
+        color: #854D0E;
+        font-size: 0.78rem;
+        line-height: 1.5;
+    }
+
+    /* Progresso */
+    .progress-container {
+        height: 22px !important;
+        margin: 15px 0 8px 0 !important;
+        border-radius: 999px !important;
+        background: #E9EDF5 !important;
+        overflow: hidden;
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 999px !important;
+        background: linear-gradient(90deg, #3942F6 0%, #6E75FF 68%, #F8B807 100%) !important;
+        box-shadow: 0 0 12px rgba(57, 66, 246, 0.28);
+        transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        border-radius: 11px;
+        background: linear-gradient(135deg, var(--sv-primary), var(--sv-primary-deep));
+        color: #FFFFFF;
+        font-weight: 700;
+        box-shadow: 0 6px 16px -6px rgba(57, 66, 246, 0.4);
+    }
+
+    /* ==============================================================
+       BOTÕES
+       ============================================================== */
+    .stButton > button,
+    [data-testid="stFormSubmitButton"] > button,
+    .stDownloadButton > button,
+    [data-testid="stBaseButton-primary"],
+    [data-testid="stBaseButton-secondary"] {
+        min-height: 40px;
+        padding: 0.5rem 1.05rem !important;
+        border-radius: 10px !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.005em;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease !important;
+    }
+
+    .stButton > button[kind="primary"],
+    [data-testid="stFormSubmitButton"] > button[kind="primary"],
+    [data-testid="stBaseButton-primary"] {
+        background: linear-gradient(135deg, #3942F6 0%, #252CD6 100%) !important;
+        border: 1px solid rgba(37, 44, 214, 0.55) !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 5px 14px -5px rgba(57, 66, 246, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.17) !important;
+    }
+
+    .stButton > button[kind="primary"]:hover,
+    [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
+    [data-testid="stBaseButton-primary"]:hover {
+        transform: translateY(-1px);
+        background: linear-gradient(135deg, #454DF8 0%, #2E35DE 100%) !important;
+        box-shadow: 0 9px 22px -7px rgba(57, 66, 246, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .stButton > button[kind="secondary"],
+    [data-testid="stFormSubmitButton"] > button[kind="secondary"],
+    [data-testid="stBaseButton-secondary"] {
+        background: #FFFFFF !important;
+        border: 1px solid var(--sv-border) !important;
+        color: #334155 !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+    }
+
+    .stButton > button[kind="secondary"]:hover,
+    [data-testid="stFormSubmitButton"] > button[kind="secondary"]:hover,
+    [data-testid="stBaseButton-secondary"]:hover {
+        transform: translateY(-1px);
+        border-color: #C7D2E2 !important;
+        background: #F8FAFC !important;
+        color: var(--sv-primary) !important;
+    }
+
+    .stButton > button:focus-visible,
+    [data-testid="stFormSubmitButton"] > button:focus-visible,
+    .stDownloadButton > button:focus-visible {
+        outline: none !important;
+        box-shadow: 0 0 0 3px rgba(57, 66, 246, 0.22) !important;
+    }
+
+    .stButton > button:disabled,
+    [data-testid="stFormSubmitButton"] > button:disabled {
+        opacity: 0.48 !important;
+        transform: none !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+    }
+
+    .stDownloadButton > button {
+        background: #FFFFFF !important;
+        border: 1px solid var(--sv-border) !important;
+        color: #334155 !important;
+    }
+
+    .stDownloadButton > button:hover {
+        border-color: rgba(57, 66, 246, 0.35) !important;
+        color: var(--sv-primary) !important;
+        background: #F8FAFF !important;
+    }
+
+    /* ==============================================================
+       FORMULÁRIOS E INPUTS
+       ============================================================== */
+    [data-testid="stForm"] {
+        padding: 1.25rem 1.3rem !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 18px !important;
+        background: rgba(255, 255, 255, 0.84) !important;
+        box-shadow: var(--sv-shadow-sm) !important;
+    }
+
+    [data-testid="stWidgetLabel"] p,
+    .stTextInput label p,
+    .stSelectbox label p,
+    .stNumberInput label p,
+    .stDateInput label p,
+    .stTextArea label p {
+        color: #334155 !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.005em;
+    }
+
+    [data-testid="stTextInput"] [data-baseweb="input"],
+    [data-testid="stNumberInput"] [data-baseweb="input"],
+    [data-testid="stDateInput"] [data-baseweb="input"],
+    [data-testid="stTextArea"] [data-baseweb="textarea"],
+    [data-testid="stSelectbox"] [data-baseweb="select"] > div,
+    [data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+        min-height: 43px;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 10px !important;
+        background: #FFFFFF !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025) !important;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+    }
+
+    [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+    [data-testid="stNumberInput"] [data-baseweb="input"]:focus-within,
+    [data-testid="stDateInput"] [data-baseweb="input"]:focus-within,
+    [data-testid="stTextArea"] [data-baseweb="textarea"]:focus-within,
+    [data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within,
+    [data-testid="stMultiSelect"] [data-baseweb="select"] > div:focus-within {
+        border-color: var(--sv-primary) !important;
+        box-shadow: 0 0 0 3px rgba(57, 66, 246, 0.12) !important;
+    }
+
+    .stTextInput input,
+    .stNumberInput input,
+    .stDateInput input,
+    .stTextArea textarea,
+    [data-baseweb="select"] input {
+        color: var(--sv-text) !important;
+        font-size: 0.86rem !important;
+        font-family: 'Inter', sans-serif !important;
+        background: transparent !important;
+    }
+
+    .stTextInput input::placeholder,
+    .stTextArea textarea::placeholder {
+        color: #A3AFC2 !important;
+        opacity: 1;
+    }
+
+    [data-testid="stTextInput"] [data-baseweb="input"] > div:first-child,
+    [data-testid="stNumberInput"] [data-baseweb="input"] > div:first-child {
+        border-right: 0 !important;
+    }
+
+    .stTextArea textarea { min-height: 92px !important; padding: 10px 12px !important; }
+
+    [data-testid="stNumberInput"] button {
+        border-color: transparent !important;
+        background: transparent !important;
+        color: var(--sv-muted) !important;
+    }
+
+    [data-testid="stNumberInput"] button:hover { background: var(--sv-primary-soft) !important; color: var(--sv-primary) !important; }
+
+    [data-testid="stCheckbox"] label,
+    [data-testid="stToggle"] label,
+    [data-testid="stRadio"] label {
+        color: #334155 !important;
+        font-size: 0.83rem !important;
+    }
+
+    [data-testid="stCheckbox"] input,
+    [data-testid="stToggle"] input { accent-color: var(--sv-primary) !important; }
+
+    [data-testid="stSlider"] [role="slider"] { background: var(--sv-primary) !important; border-color: #FFFFFF !important; }
+    [data-testid="stSlider"] [data-baseweb="slider"] div[role="progressbar"] { background: var(--sv-primary) !important; }
+
+    [data-testid="stFileUploaderDropzone"] {
+        border: 1px dashed #CBD5E1 !important;
+        border-radius: 12px !important;
+        background: #F8FAFC !important;
+        min-height: 104px;
+    }
+
+    [data-testid="stFileUploaderDropzone"]:hover {
+        border-color: var(--sv-primary) !important;
+        background: #F8F9FF !important;
+    }
+
+    /* Popovers de select */
+    [data-baseweb="popover"] [role="listbox"] {
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 12px !important;
+        box-shadow: var(--sv-shadow-md) !important;
+        padding: 5px !important;
+    }
+
+    [data-baseweb="popover"] [role="option"] {
+        border-radius: 8px !important;
+        font-size: 0.83rem !important;
+    }
+
+    /* ==============================================================
+       ABAS
+       ============================================================== */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 4px !important;
+        width: 100%;
+        padding: 5px !important;
+        margin-bottom: 18px !important;
+        border: 1px solid #E5EAF2 !important;
+        border-bottom: 1px solid #E5EAF2 !important;
+        border-radius: 13px !important;
+        background: #EBEFF6 !important;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 38px !important;
+        padding: 0 14px !important;
+        border: 0 !important;
+        border-radius: 9px !important;
+        background: transparent !important;
+        color: var(--sv-muted) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        white-space: nowrap;
+        transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease !important;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover { color: var(--sv-primary) !important; background: rgba(255, 255, 255, 0.55) !important; }
+
+    .stTabs [aria-selected="true"] {
+        background: #FFFFFF !important;
+        color: var(--sv-primary) !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 7px rgba(15, 23, 42, 0.08), inset 0 0 0 1px rgba(226, 232, 240, 0.7) !important;
+    }
+
+    .stTabs [data-baseweb="tab-highlight"] { display: none !important; }
+    .stTabs [data-baseweb="tab-border"] { display: none !important; }
+
+    /* ==============================================================
+       ALERTAS NATIVOS, EXPANDERS, TABELAS
+       ============================================================== */
+    [data-testid="stAlert"] {
+        border-radius: 12px !important;
+        border: 1px solid var(--sv-border) !important;
+        box-shadow: var(--sv-shadow-sm) !important;
+        font-size: 0.82rem !important;
+    }
+
+    [data-testid="stAlert"] p { font-size: 0.82rem !important; line-height: 1.55 !important; margin-bottom: 0 !important; }
+
+    [data-testid="stExpander"] {
+        margin-bottom: 10px !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 13px !important;
+        background: #FFFFFF !important;
+        box-shadow: var(--sv-shadow-sm);
+        overflow: hidden;
+    }
+
+    [data-testid="stExpander"] summary {
+        padding: 12px 15px !important;
+        font-size: 0.84rem !important;
+        font-weight: 600 !important;
+        color: #334155 !important;
+    }
+
+    [data-testid="stExpander"] summary:hover { background: #F8FAFC !important; }
+
+    [data-testid="stDataFrame"] {
+        overflow: hidden !important;
+        border: 1px solid var(--sv-border) !important;
+        border-radius: 14px !important;
+        background: #FFFFFF !important;
+        box-shadow: var(--sv-shadow-sm) !important;
+    }
+
+    [data-testid="stDataFrame"] > div { border-radius: 14px !important; }
+
+    .stCode, code {
+        border-radius: 7px !important;
+        background: #F1F5F9 !important;
+        color: #334155 !important;
+        font-size: 0.82em !important;
+    }
+
+    .stSpinner > div { border-top-color: var(--sv-primary) !important; }
+
+    /* ==============================================================
+       SIDEBAR
+       ============================================================== */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 100%) !important;
+        border-right: 1px solid var(--sv-border) !important;
+        box-shadow: 8px 0 30px -24px rgba(15, 23, 42, 0.22);
+    }
+
+    section[data-testid="stSidebar"][data-collapsed="false"] {
+        width: 292px !important;
+        min-width: 292px !important;
+    }
+
+    section[data-testid="stSidebar"][data-collapsed="true"] {
+        width: 0 !important;
+        min-width: 0 !important;
+        border-right: 0 !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
+    }
+
+    body:has(button[data-testid="stExpandSidebarButton"]) [data-testid="stMainBlockContainer"] {
+        padding-top: 4.5rem !important;
+    }
+
+    section[data-testid="stSidebar"] > div,
+    section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+        background: transparent !important;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stSidebarContent"],
+    section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+        padding: 1.05rem 1rem 1.5rem 1rem !important;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] { padding: 0.9rem 1rem 0 1rem !important; }
+
+    .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 4px 3px 17px 3px;
+    }
+
+    .sidebar-brand-mark {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: linear-gradient(140deg, #3942F6 0%, #2027C9 100%);
+        color: #FFFFFF;
+        box-shadow: 0 8px 18px -7px rgba(57, 66, 246, 0.6);
+    }
+
+    .sidebar-brand-mark svg { width: 24px; height: 24px; }
+
+    .sidebar-brand-name {
+        color: var(--sv-text);
+        font-size: 1.04rem;
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.035em;
+    }
+
+    .sidebar-brand-name span { color: var(--sv-primary); }
+
+    .sidebar-brand-sub {
+        margin-top: 3px;
+        color: var(--sv-muted-light);
+        font-size: 0.58rem;
+        font-weight: 700;
+        letter-spacing: 0.105em;
+        text-transform: uppercase;
+    }
+
+    .sidebar-user {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 12px;
+        margin-bottom: 6px;
+        border: 1px solid #E5EAF5;
+        border-radius: 15px;
+        background: linear-gradient(135deg, #F4F6FF 0%, #FFFFFF 100%);
+        box-shadow: 0 4px 14px -10px rgba(57, 66, 246, 0.32);
+    }
+
+    .sidebar-user-avatar {
+        width: 35px;
+        height: 35px;
+        flex: 0 0 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #DDE1FF;
+        border-radius: 11px;
+        background: #FFFFFF;
+        color: var(--sv-primary);
+        font-size: 0.82rem;
+        font-weight: 800;
+        box-shadow: 0 2px 5px rgba(57, 66, 246, 0.07);
+    }
+
+    .sidebar-user-name {
+        overflow: hidden;
+        color: var(--sv-text);
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sidebar-user-role {
+        margin-top: 3px;
+        color: var(--sv-primary);
+        font-size: 0.64rem;
+        font-weight: 700;
+        line-height: 1.3;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+    }
+
+    .sidebar-section-label {
+        margin: 17px 4px 7px 4px;
+        color: #9AA7BC;
+        font-size: 0.58rem;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+    }
+
+    /* Navegação lateral */
+    section[data-testid="stSidebar"] [data-testid="stRadio"] > label { display: none !important; }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] { gap: 3px !important; }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] label {
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 9px !important;
+        border: 1px solid transparent;
+        border-radius: 9px !important;
+        background: transparent;
+        color: #536179 !important;
+        font-size: 0.76rem !important;
+        line-height: 1.3 !important;
+        transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+        border-color: #E7EBFA;
+        background: #F4F6FF;
+        color: var(--sv-primary) !important;
+    }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+        border-color: #DDE1FF;
+        background: linear-gradient(90deg, #EEF0FF 0%, #F7F8FF 100%);
+        color: var(--sv-primary) !important;
+        box-shadow: inset 3px 0 0 var(--sv-primary);
+    }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p { color: var(--sv-primary) !important; font-weight: 700 !important; }
+
+    section[data-testid="stSidebar"] [role="radiogroup"] p {
+        font-size: 0.76rem !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        white-space: normal;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stRadioOption"] > div > div:first-child {
+        display: none !important;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stRadioOption"] > div {
+        gap: 0 !important;
+        align-items: center !important;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] p {
+        padding-left: 1px;
+    }
+
+    .sidebar-unit {
+        padding: 12px;
+        margin-top: 2px;
+        border: 1px solid var(--sv-border);
+        border-radius: 13px;
+        background: #FFFFFF;
+        box-shadow: var(--sv-shadow-sm);
+    }
+
+    .sidebar-unit-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        color: var(--sv-text);
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .sidebar-unit-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 3px 0;
+        color: var(--sv-muted);
+        font-size: 0.67rem;
+        line-height: 1.4;
+    }
+
+    .sidebar-unit-row b { color: #334155; font-weight: 600; text-align: right; }
+
+    section[data-testid="stSidebar"] .stButton > button {
+        width: 100%;
+        min-height: 35px !important;
+        padding: 0.35rem 0.8rem !important;
+        border-color: #E2E8F0 !important;
+        background: #FFFFFF !important;
+        color: #64748B !important;
+        font-size: 0.71rem !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        border-color: #FECACA !important;
+        background: #FFF7F7 !important;
+        color: #B42318 !important;
+        transform: none;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stExpander"] {
+        margin-top: 12px !important;
+        border-color: #E7ECF4 !important;
+        box-shadow: none !important;
+        background: rgba(255, 255, 255, 0.65) !important;
+    }
+
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary { padding: 10px 11px !important; font-size: 0.71rem !important; }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stExpanderDetails"] { padding: 0 11px 11px 11px !important; }
+
+    section[data-testid="stSidebar"] .stCaptionContainer,
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
+        font-size: 0.65rem !important;
+        line-height: 1.4;
+    }
+
+    .sidebar-footer {
+        margin-top: 18px;
+        padding-top: 12px;
+        border-top: 1px solid var(--sv-border);
+        color: #A0AEC0;
+        font-size: 0.6rem;
+        line-height: 1.5;
+        text-align: center;
+        letter-spacing: 0.02em;
+    }
+
+    .sidebar-footer b { color: #64748B; font-weight: 600; }
+
+    /* ==============================================================
+       UTILITÁRIOS / RESPONSIVO
+       ============================================================== */
+    @keyframes sv-rise {
+        from { opacity: 0; transform: translateY(7px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: #CBD5E1; background-clip: content-box; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; background-clip: content-box; }
+
+    @media (max-width: 1100px) {
+        .portal-header { padding: 24px; }
+        .portal-header-inner { align-items: flex-start; }
+        .brand-title { font-size: 1.7rem !important; }
+        .hero-actions { width: 100%; align-items: flex-start; }
+        .hero-meta-row { justify-content: flex-start; }
+        .profile-card { min-width: 230px; width: auto; }
+    }
+
+    @media (max-width: 860px) {
+        .main .block-container, [data-testid="stMainBlockContainer"] {
+            padding: 1rem 1rem 2.5rem 1rem !important;
+        }
+        .portal-header { border-radius: 19px; padding: 20px; }
+        .portal-header-inner { align-items: flex-start; }
+        .hero-actions { width: 100%; align-items: flex-start; }
+        .hero-meta-row { justify-content: flex-start; }
+        .profile-card { width: 100%; }
+        .page-heading-title { font-size: 1.3rem !important; }
+    }
+
+    @media (max-width: 640px) {
+        .brand-mark { width: 46px; height: 46px; flex-basis: 46px; border-radius: 14px; }
+        .brand-title { font-size: 1.45rem !important; }
+        .brand-subtitle { font-size: 0.76rem; }
+        .page-heading-icon { width: 42px; height: 42px; flex-basis: 42px; border-radius: 12px; font-size: 1.1rem; }
+        .page-heading-title { font-size: 1.18rem !important; }
+        .metric-value, .kpi-value { font-size: 1.55rem !important; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -393,210 +1524,544 @@ def _render_login_screen():
     # CSS condicional: só existe quando a tela de login é renderizada
     st.markdown("""
     <style>
-    /* Container principal: fundo cinza-claro, centraliza o card */
-    .main .block-container {
+    /* ==============================================================
+       LOGIN — EXPERIÊNCIA SMARTVISION
+       ============================================================== */
+    .main .block-container,
+    [data-testid="stMainBlockContainer"] {
         min-height: 100vh !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 0 !important;
-        background: transparent !important;
         max-width: 100% !important;
+        padding: 2.5rem 2rem !important;
+        background: transparent !important;
+        box-sizing: border-box !important;
     }
 
-    /* O <form> do Streamlit vira o card branco de login */
     [data-testid="stForm"] {
-        background: #FFFFFF !important;
-        border: none !important;
-        border-radius: 18px !important;
-        box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.12) !important;
-        padding: 40px 36px 36px 36px !important;
-        max-width: 530px !important;
         width: 100% !important;
+        max-width: 1040px !important;
         margin: 0 auto !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        border: 1px solid rgba(226, 232, 240, 0.9) !important;
+        border-radius: 26px !important;
+        background: #FFFFFF !important;
+        box-shadow: 0 34px 80px -30px rgba(30, 37, 182, 0.38), 0 12px 28px -16px rgba(15, 23, 42, 0.18) !important;
     }
 
-    /* Logo + título + subtítulo dentro do form */
-    .login-header {
-        text-align: center;
-        margin-bottom: 8px;
-    }
-    .login-header .smart { color: #3942F6; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
-    .login-header .vision { color: #F8B807; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px; }
-    .login-header h1 { color: #18181B; font-size: 1.5rem; font-weight: 700; margin: 20px 0 6px 0; letter-spacing: -0.25px; }
-    .login-header p { color: #71717A; font-size: 0.95rem; margin: 0 0 24px 0; }
+    [data-testid="stForm"] > div { margin-bottom: 0 !important; }
 
-    /* Ícones SVG nos campos */
+    [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+        gap: 0 !important;
+        align-items: stretch !important;
+    }
+
+    [data-testid="stForm"] [data-testid="stColumn"]:first-child {
+        border-radius: 25px 0 0 25px;
+        background:
+            radial-gradient(circle at 92% 6%, rgba(248, 184, 7, 0.24), transparent 15rem),
+            linear-gradient(145deg, #232BDB 0%, #3942F6 52%, #1B22AC 100%);
+        box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08);
+    }
+
+    [data-testid="stForm"] [data-testid="stColumn"]:last-child {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 38px 42px 34px 42px !important;
+        background: #FFFFFF;
+    }
+
+    /* Painel de marca */
+    .login-brand-panel {
+        position: relative;
+        min-height: 480px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 38px 38px 30px 38px;
+        overflow: hidden;
+        color: #FFFFFF;
+    }
+
+    .login-brand-panel::before {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        right: -120px;
+        top: -105px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50%;
+        box-shadow: 0 0 0 42px rgba(255, 255, 255, 0.035), 0 0 0 84px rgba(255, 255, 255, 0.018);
+    }
+
+    .login-brand-panel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-size: 30px 30px;
+        mask-image: linear-gradient(130deg, transparent 22%, rgba(0, 0, 0, 0.55) 70%, transparent 100%);
+        -webkit-mask-image: linear-gradient(130deg, transparent 22%, rgba(0, 0, 0, 0.55) 70%, transparent 100%);
+        pointer-events: none;
+    }
+
+    .login-brand-panel > * { position: relative; z-index: 1; }
+
+    .login-logo-row { display: flex; align-items: center; gap: 11px; }
+
+    .login-logo-mark {
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.13);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 18px rgba(15, 23, 42, 0.14);
+        backdrop-filter: blur(10px);
+    }
+
+    .login-logo-mark svg { width: 25px; height: 25px; }
+
+    .login-wordmark { font-size: 1.02rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1.1; }
+    .login-wordmark .vision { color: #FFD54A; }
+    .login-wordmark-sub {
+        margin-top: 3px;
+        color: rgba(255, 255, 255, 0.57);
+        font-size: 0.56rem;
+        font-weight: 700;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+    }
+
+    .login-brand-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        align-self: flex-start;
+        margin-top: 47px;
+        padding: 6px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.17);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.58rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        backdrop-filter: blur(8px);
+    }
+
+    .login-brand-panel h1 {
+        margin: 17px 0 0 0 !important;
+        color: #FFFFFF !important;
+        font-size: 2.45rem !important;
+        line-height: 1.06 !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.055em !important;
+    }
+
+    .login-brand-panel h1 span { color: #FFD54A !important; }
+
+    .login-brand-panel > p {
+        max-width: 365px;
+        margin: 15px 0 0 0 !important;
+        color: rgba(255, 255, 255, 0.71) !important;
+        font-size: 0.83rem !important;
+        line-height: 1.65 !important;
+    }
+
+    .login-benefits {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 29px;
+        padding-top: 22px;
+        border-top: 1px solid rgba(255, 255, 255, 0.13);
+    }
+
+    .login-benefit { display: flex; align-items: flex-start; gap: 10px; color: rgba(255, 255, 255, 0.84); font-size: 0.76rem; line-height: 1.5; }
+    .login-benefit-icon {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.09);
+        color: #FFD54A;
+        font-size: 0.62rem;
+        font-weight: 800;
+    }
+
+    .login-benefit b { color: #FFFFFF; font-weight: 600; }
+
+    .login-security {
+        display: inline-flex;
+        align-items: center;
+        align-self: flex-start;
+        gap: 7px;
+        margin-top: auto;
+        padding-top: 26px;
+        color: rgba(255, 255, 255, 0.52);
+        font-size: 0.61rem;
+        font-weight: 500;
+        letter-spacing: 0.015em;
+    }
+
+    .login-security svg { width: 12px; height: 12px; }
+
+    /* Painel de formulário */
+    .login-form-intro { margin-bottom: 22px; }
+
+    .login-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 9px;
+        border: 1px solid #DDE1FF;
+        border-radius: 999px;
+        background: #F3F4FF;
+        color: var(--sv-primary);
+        font-size: 0.58rem;
+        font-weight: 800;
+        letter-spacing: 0.11em;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .login-badge::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--sv-success);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.11);
+    }
+
+    .login-form-intro h2 {
+        margin: 12px 0 5px 0 !important;
+        color: var(--sv-text) !important;
+        font-size: 1.5rem !important;
+        line-height: 1.15 !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.045em !important;
+    }
+
+    .login-form-intro p {
+        margin: 0 !important;
+        color: var(--sv-muted) !important;
+        font-size: 0.79rem !important;
+        line-height: 1.55 !important;
+    }
+
     .login-field-icon {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 2px;
+        gap: 6px;
+        margin: 0 0 4px 1px;
     }
-    .login-field-icon svg {
-        width: 15px;
-        height: 15px;
-        flex-shrink: 0;
-        color: #71717A;
-    }
+
+    .login-field-icon svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--sv-primary); opacity: 0.82; }
+
     .login-field-icon .field-label {
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: #18181B;
+        color: #334155;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: -0.005em;
     }
 
-    /* Inputs de texto do Streamlit */
-    .stTextInput input {
-        border: 1px solid #D4D4D8 !important;
+    [data-testid="stForm"] .stTextInput { margin-bottom: 8px; }
+
+    [data-testid="stForm"] .stTextInput label { display: none !important; }
+
+    [data-testid="stForm"] .stTextInput [data-baseweb="input"] {
+        min-height: 47px !important;
+        border: 1px solid #DDE3EC !important;
         border-radius: 10px !important;
-        min-height: 44px !important;
-        font-size: 0.95rem !important;
-        color: #18181B !important;
+        background: #FBFCFE !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025) !important;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease !important;
+    }
+
+    [data-testid="stForm"] .stTextInput [data-baseweb="input"]:focus-within {
+        border-color: var(--sv-primary) !important;
         background: #FFFFFF !important;
-        transition: border-color 0.2s, box-shadow 0.2s !important;
+        box-shadow: 0 0 0 3px rgba(57, 66, 246, 0.12) !important;
     }
-    .stTextInput input::placeholder { color: #A1A1AA !important; }
-    .stTextInput input:focus {
-        border-color: #18181B !important;
-        box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.08) !important;
+
+    [data-testid="stForm"] .stTextInput input {
+        min-height: 45px !important;
+        padding: 0 13px !important;
+        color: var(--sv-text) !important;
+        font-size: 0.84rem !important;
     }
-    /* Oculta labels nativas (usamos labels customizados via st.markdown) */
-    .stTextInput label { display: none !important; }
 
-    /* Espaçamento entre widgets dentro do form */
-    [data-testid="stForm"] > div { margin-bottom: 8px; }
+    [data-testid="stForm"] .stTextInput input::placeholder { color: #A3AFC2 !important; }
 
-    /* Botão ENTRAR (único botão do form) */
-    [data-testid="stForm"] button {
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] { margin-top: 12px; }
+
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
         width: 100% !important;
-        background: #18181B !important;
-        color: #FFFFFF !important;
-        border: none !important;
+        min-height: 48px !important;
         border-radius: 10px !important;
-        min-height: 46px !important;
-        font-size: 0.95rem !important;
+        background: linear-gradient(135deg, #3942F6 0%, #252CD6 100%) !important;
+        border: 1px solid rgba(37, 44, 214, 0.5) !important;
+        color: #FFFFFF !important;
+        font-size: 0.84rem !important;
         font-weight: 700 !important;
-        letter-spacing: 0.5px !important;
-        transition: background 0.2s !important;
+        letter-spacing: 0.015em !important;
+        box-shadow: 0 9px 20px -8px rgba(57, 66, 246, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
     }
-    [data-testid="stForm"] button:hover {
-        background: #27272A !important;
+
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover {
+        background: linear-gradient(135deg, #4A52F9 0%, #2C34DF 100%) !important;
+        box-shadow: 0 12px 26px -9px rgba(57, 66, 246, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+        transform: translateY(-1px);
     }
-    [data-testid="stForm"] button[kind="primary"]:disabled {
-        background: #A1A1AA !important;
+
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button:disabled {
+        background: #B7BDD0 !important;
+        border-color: #B7BDD0 !important;
+        box-shadow: none !important;
         cursor: not-allowed !important;
     }
 
-    /* Mensagem de erro */
     .login-error {
-        background: #FEF2F2;
-        border-left: 3px solid #EF4444;
-        color: #991B1B;
-        font-size: 0.85rem;
-        padding: 10px 14px;
+        margin-top: 12px;
+        padding: 10px 12px;
+        border: 1px solid #FECACA;
+        border-left: 3px solid var(--sv-danger);
         border-radius: 8px;
-        font-weight: 500;
-    }
-
-    /* Credenciais de desenvolvimento (abaixo do card) */
-    .login-dev {
-        background: #FFFFFF;
-        border: 1px solid #D4D4D8;
-        border-radius: 12px;
-        padding: 14px 18px;
-        max-width: 530px;
-        width: 100%;
-        margin: 16px auto 0 auto;
-        box-sizing: border-box;
-    }
-    .login-dev-title {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #71717A;
-        margin-bottom: 6px;
-    }
-    .login-dev-creds {
+        background: #FFF5F5;
+        color: #991B1B;
         font-size: 0.78rem;
-        color: #71717A;
+        font-weight: 500;
         line-height: 1.5;
     }
-    .login-dev-creds b { color: #18181B; }
+
+    /* Credenciais de avaliação */
+    .login-dev {
+        width: 100%;
+        max-width: 1040px;
+        margin: 15px auto 0 auto;
+        padding: 14px 17px;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 9px 26px -22px rgba(15, 23, 42, 0.3);
+        backdrop-filter: blur(12px);
+    }
+
+    .login-dev-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 9px;
+        color: #64748B;
+        font-size: 0.63rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .login-dev-title::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--sv-secondary);
+        box-shadow: 0 0 0 3px rgba(248, 184, 7, 0.12);
+    }
+
+    .login-dev-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+
+    .login-dev-item {
+        padding: 8px 10px;
+        border: 1px solid #E8EDF5;
+        border-radius: 9px;
+        background: rgba(248, 250, 252, 0.72);
+    }
+
+    .login-dev-role {
+        margin-bottom: 3px;
+        color: var(--sv-primary);
+        font-size: 0.59rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    .login-dev-cred { color: #64748B; font-size: 0.68rem; line-height: 1.45; }
+    .login-dev-cred b { color: #334155; font-weight: 600; }
+
+    .login-footnote {
+        width: 100%;
+        max-width: 1040px;
+        margin: 18px auto 0 auto;
+        color: #94A3B8;
+        font-size: 0.61rem;
+        line-height: 1.5;
+        text-align: center;
+        letter-spacing: 0.015em;
+    }
+
+    @media (max-width: 980px) {
+        [data-testid="stMainBlockContainer"] { justify-content: flex-start !important; padding-top: 1.5rem !important; }
+        [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
+            flex-wrap: nowrap !important;
+        }
+        [data-testid="stForm"] [data-testid="stColumn"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            flex: 0 0 auto !important;
+        }
+        [data-testid="stForm"] [data-testid="stColumn"]:first-child { border-radius: 25px 25px 0 0; }
+        [data-testid="stForm"] [data-testid="stColumn"]:last-child { padding: 30px 30px 28px 30px !important; }
+        .login-brand-panel { min-height: auto; padding: 28px 30px 26px 30px; }
+        .login-brand-kicker { margin-top: 28px; }
+        .login-brand-panel h1 { font-size: 1.95rem !important; }
+        .login-brand-panel > p { max-width: 520px; }
+        .login-benefits { display: none; }
+        .login-security { margin-top: 20px; padding-top: 0; }
+    }
 
     @media (max-width: 640px) {
-        [data-testid="stForm"] {
-            padding: 28px 20px !important;
-        }
-        .login-header .smart, .login-header .vision {
-            font-size: 1.5rem;
-        }
-        .login-header h1 {
-            font-size: 1.35rem;
-        }
+        .main .block-container { padding: 1rem !important; }
+        [data-testid="stForm"] { border-radius: 20px !important; }
+        [data-testid="stForm"] [data-testid="stColumn"]:first-child { border-radius: 19px 19px 0 0; }
+        .login-brand-panel { padding: 23px 21px 22px 21px; }
+        .login-brand-panel h1 { font-size: 1.65rem !important; }
+        .login-brand-panel > p { font-size: 0.76rem !important; }
+        [data-testid="stForm"] [data-testid="stColumn"]:last-child { padding: 24px 21px 23px 21px !important; }
+        .login-form-intro h2 { font-size: 1.3rem !important; }
+        .login-dev { padding: 12px; }
+        .login-dev-grid { grid-template-columns: 1fr; }
+        .login-dev-item { display: flex; align-items: baseline; gap: 7px; }
+        .login-dev-role { margin-bottom: 0; min-width: 74px; }
     }
     </style>
     """, unsafe_allow_html=True)
 
     with st.form("login_form", clear_on_submit=False):
+        brand_col, access_col = st.columns([1.06, 0.94], gap="large")
 
-        # --- Logo + título + subtítulo (dentro do form/card) ---
-        st.markdown("""
-        <div class="login-header">
-            <span class="smart">SMART</span><span class="vision">VISION</span>
-            <h1>Acesso ao Sistema</h1>
-            <p>Entre com suas credenciais para continuar.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        with brand_col:
+            st.markdown("""
+            <div class="login-brand-panel">
+                <div class="login-logo-row">
+                    <div class="login-logo-mark">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="6.2" cy="14.3" r="3.4"></circle>
+                            <circle cx="17.8" cy="14.3" r="3.4"></circle>
+                            <path d="M9.6 14.3h4.8M2.8 14.3 1.8 11M21.2 14.3l1-3.3M6.2 10.9 7.7 7.2h8.6l1.5 3.7"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="login-wordmark">SMART<span class="vision">VISION</span></div>
+                        <div class="login-wordmark-sub">Plataforma de gestão óptica</div>
+                    </div>
+                </div>
+                <div class="login-brand-kicker"><span class="status-dot"></span> Inteligência operacional</div>
+                <h1>Sua operação,<br><span>mais inteligente.</span></h1>
+                <p>Estoque, vendas, equipe e indicadores conectados em uma única experiência de gestão.</p>
+                <div class="login-benefits">
+                    <div class="login-benefit">
+                        <div class="login-benefit-icon">✓</div>
+                        <div><b>Visão unificada</b> da loja, do time e dos resultados em tempo real.</div>
+                    </div>
+                    <div class="login-benefit">
+                        <div class="login-benefit-icon">✓</div>
+                        <div><b>Controle auditado</b> de estoque, saídas e processos críticos.</div>
+                    </div>
+                    <div class="login-benefit">
+                        <div class="login-benefit-icon">✓</div>
+                        <div><b>Decisões mais rápidas</b> com alertas e recomendações acionáveis.</div>
+                    </div>
+                </div>
+                <div class="login-security">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    Ambiente seguro · Acesso restrito à equipe SmartVision
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # --- Campo Usuário ---
-        st.markdown("""
-        <div class="login-field-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <span class="field-label">Usuário</span>
-        </div>
-        """, unsafe_allow_html=True)
-        usuario = st.text_input(
-            "Usuário",
-            value=st.session_state.login_username,
-            placeholder="Digite seu usuário",
-            label_visibility="collapsed",
-            key="login_usuario_input",
-        )
+        with access_col:
+            st.markdown("""
+            <div class="login-form-intro">
+                <div class="login-badge">Acesso seguro</div>
+                <h2>Bem-vindo de volta</h2>
+                <p>Informe suas credenciais corporativas para acessar o portal.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # --- Campo Senha + toggle de visibilidade ---
-        senha_tipo = "text" if st.session_state.login_show_password else "password"
+            # --- Campo Usuário ---
+            st.markdown("""
+            <div class="login-field-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span class="field-label">Usuário ou e-mail</span>
+            </div>
+            """, unsafe_allow_html=True)
+            usuario = st.text_input(
+                "Usuário",
+                value=st.session_state.login_username,
+                placeholder="seu.nome@smartvision.com",
+                label_visibility="collapsed",
+                key="login_usuario_input",
+            )
 
-        st.markdown("""
-        <div class="login-field-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <span class="field-label">Senha</span>
-        </div>
-        """, unsafe_allow_html=True)
+            # --- Campo Senha + toggle de visibilidade ---
+            senha_tipo = "text" if st.session_state.login_show_password else "password"
 
-        senha = st.text_input(
-            "Senha",
-            placeholder="Digite sua senha",
-            type=senha_tipo,
-            label_visibility="collapsed",
-            key="login_senha_input",
-        )
+            st.markdown("""
+            <div class="login-field-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span class="field-label">Senha</span>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # --- Botão ENTRAR ---
-        entrar = st.form_submit_button(
-            "ENTRAR",
-            type="primary",
-            key="login_entrar_btn",
-        )
+            senha = st.text_input(
+                "Senha",
+                placeholder="Digite sua senha corporativa",
+                type=senha_tipo,
+                label_visibility="collapsed",
+                key="login_senha_input",
+            )
 
-        # --- Mensagem de erro (dentro do card) ---
-        if st.session_state.login_error:
-            st.error(st.session_state.login_error)
+            # --- Botão de acesso ---
+            entrar = st.form_submit_button(
+                "Acessar plataforma  →",
+                type="primary",
+                key="login_entrar_btn",
+            )
+
+            # --- Mensagem de erro (dentro do card) ---
+            if st.session_state.login_error:
+                st.markdown(
+                    f'<div class="login-error">{html.escape(str(st.session_state.login_error))}</div>',
+                    unsafe_allow_html=True,
+                )
 
     # --- Credenciais de desenvolvimento (abaixo do card, fora do form) ---
     if "DEV_CREDENTIALS_SHOWN" not in st.session_state:
@@ -605,11 +2070,23 @@ def _render_login_screen():
     if st.session_state.DEV_CREDENTIALS_SHOWN:
         st.markdown("""
         <div class="login-dev">
-            <div class="login-dev-title">Credenciais para Avaliação (Ambiente de Desenvolvimento)</div>
-            <div class="login-dev-creds"><b>Gerente:</b> gerente@smartvision.com / Senha123!</div>
-            <div class="login-dev-creds"><b>Supervisor:</b> supervisor@smartvision.com / Senha123!</div>
-            <div class="login-dev-creds"><b>Vendedor:</b> vendedor@smartvision.com / Senha123!</div>
+            <div class="login-dev-title">Acessos de avaliação · ambiente de desenvolvimento</div>
+            <div class="login-dev-grid">
+                <div class="login-dev-item">
+                    <div class="login-dev-role">Gerente</div>
+                    <div class="login-dev-cred"><b>gerente@smartvision.com</b><br>Senha123!</div>
+                </div>
+                <div class="login-dev-item">
+                    <div class="login-dev-role">Supervisor</div>
+                    <div class="login-dev-cred"><b>supervisor@smartvision.com</b><br>Senha123!</div>
+                </div>
+                <div class="login-dev-item">
+                    <div class="login-dev-role">Vendedor</div>
+                    <div class="login-dev-cred"><b>vendedor@smartvision.com</b><br>Senha123!</div>
+                </div>
+            </div>
         </div>
+        <div class="login-footnote">SmartVision · Plataforma corporativa de gestão óptica &nbsp;·&nbsp; v2.0</div>
         """, unsafe_allow_html=True)
 
     # --- Lógica de submissão ---
@@ -651,6 +2128,23 @@ def _handle_login(usuario: str, senha: str):
     st.session_state.login_error = None
     st.session_state.login_username = str(usuario or "").strip()
     st.rerun()
+
+
+def _render_page_header(icon: str, title: str, subtitle: str, eyebrow: str = "SmartVision"):
+    """Renderiza o cabeçalho padronizado das páginas internas."""
+    st.markdown(
+        f"""
+        <div class="page-heading">
+            <div class="page-heading-icon">{html.escape(icon)}</div>
+            <div class="page-heading-copy">
+                <div class="page-heading-eyebrow">{html.escape(eyebrow)}</div>
+                <h1 class="page-heading-title">{html.escape(title)}</h1>
+                <p class="page-heading-subtitle">{html.escape(subtitle)}</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -746,9 +2240,18 @@ if st.session_state.authenticated and "menu_index_set" not in st.session_state:
 
 with st.sidebar:
     st.markdown("""
-        <div style="text-align: center; padding: 10px 0 20px 0;">
-            <h2 style="color: #3942F6; margin:0; font-weight:800;">👓 SmartVision</h2>
-            <span style="font-size:0.85rem; color:#64748B; font-weight:600;">PORTAL DO COLABORADOR</span>
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-mark">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="6.2" cy="14.3" r="3.4"></circle>
+                    <circle cx="17.8" cy="14.3" r="3.4"></circle>
+                    <path d="M9.6 14.3h4.8M2.8 14.3 1.8 11M21.2 14.3l1-3.3M6.2 10.9 7.7 7.2h8.6l1.5 3.7"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="sidebar-brand-name">Smart<span>Vision</span></div>
+                <div class="sidebar-brand-sub">Portal do colaborador</div>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -757,46 +2260,35 @@ with st.sidebar:
         _user = st.session_state.auth_user
         _user_name = _user.get("name") or _user.get("email") or "Usuário"
         _user_role = _user.get("role") or "—"
+        _sidebar_avatar = html.escape((_user_name or "U")[0].upper())
         st.markdown(f"""
-        <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
-            <div style="font-weight:700;color:#0F172A;font-size:0.95rem;margin-bottom:2px;">{_user_name}</div>
-            <div style="font-size:0.8rem;color:#3942F6;font-weight:600;">Perfil: {_user_role}</div>
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar">{_sidebar_avatar}</div>
+            <div style="min-width:0;">
+                <div class="sidebar-user-name">{html.escape(str(_user_name))}</div>
+                <div class="sidebar-user-role">{html.escape(str(_user_role))}</div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("Sair / Logout", key="btn_logout", use_container_width=True):
-            st.session_state.auth_token = None
-            st.session_state.auth_user = None
-            st.session_state.authenticated = False
-            st.session_state.login_error = None
-            st.session_state.login_username = ""
-            st.session_state.login_loading = False
-            st.session_state.login_show_password = False
-            st.session_state.menu_index_set = False
-            st.rerun()
-    else:
-        st.markdown("""
-        <div style="font-size:0.8rem;color:#64748B;text-align:center;margin-bottom:12px;">
-            Acesso não autenticado
-        </div>
-        """, unsafe_allow_html=True)
+
+    st.markdown('<div class="sidebar-section-label">Navegação</div>', unsafe_allow_html=True)
 
     menu_option = st.radio(
         "Navegação Principal:",
         options=_MENU_OPTIONS,
-        index=_default_index if st.session_state.authenticated else 0
+        index=_default_index if st.session_state.authenticated else 0,
+        label_visibility="collapsed",
     )
 
-    st.divider()
-
-    # Informações da Sessão e Filial
-    st.markdown("### 🏢 Unidade Operacional")
+    st.markdown('<div class="sidebar-section-label">Unidade operacional</div>', unsafe_allow_html=True)
     st.markdown("""
-    **Loja:** Matriz Shopping Paulista (Loja 04)  
-    **Gerente da Unidade:** Juliana Brandão  
-    **IP Conectado:** `192.168.10.45` (Rede Segura)
-    """)
-
-    st.divider()
+    <div class="sidebar-unit">
+        <div class="sidebar-unit-title"><span class="status-dot"></span> Loja 04 · Matriz</div>
+        <div class="sidebar-unit-row"><span>Unidade</span><b>Shopping Paulista</b></div>
+        <div class="sidebar-unit-row"><span>Gestora</span><b>Juliana Brandão</b></div>
+        <div class="sidebar-unit-row"><span>Rede</span><b>192.168.10.45</b></div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Configuração de Conexão com Xano (para integração de estoque)
     with st.expander("🔌 Integração Backend Xano"):
@@ -809,6 +2301,24 @@ with st.sidebar:
             os.environ["XANO_BASE_URL"] = base_url_input
         st.caption("Status: " + ("🟢 Ativo" if os.getenv("XANO_BASE_URL") else "🟡 Não configurado"))
 
+    if st.session_state.authenticated and st.session_state.auth_user:
+        if st.button("↪  Sair da conta", key="btn_logout", use_container_width=True):
+            st.session_state.auth_token = None
+            st.session_state.auth_user = None
+            st.session_state.authenticated = False
+            st.session_state.login_error = None
+            st.session_state.login_username = ""
+            st.session_state.login_loading = False
+            st.session_state.login_show_password = False
+            st.session_state.menu_index_set = False
+            st.rerun()
+
+    st.markdown("""
+    <div class="sidebar-footer">
+        <b>SmartVision</b> · Plataforma de gestão óptica<br>v2.0 · Ambiente seguro
+    </div>
+    """, unsafe_allow_html=True)
+
 # -----------------------------------------------------------------------------
 # HEADER SUPERIOR (BRANDING, SEARCH, NOTIFICAÇÕES & PROFILE CARD)
 # -----------------------------------------------------------------------------
@@ -819,26 +2329,54 @@ _header_user_name = "Carlos Eduardo Silveira"
 _header_user_role = "Consultor Ótico Senior"
 if st.session_state.authenticated and st.session_state.auth_user:
     _header_user_name = st.session_state.auth_user.get("name") or _header_user_name
-    _header_user_role = (st.session_state.auth_user.get("role") or "Usuário") + " — SmartVision"
+    _header_user_role = st.session_state.auth_user.get("role") or "Usuário"
 
 _header_avatar = (_header_user_name or "U")[0].upper() if _header_user_name else "U"
+_header_user_name_html = html.escape(str(_header_user_name))
+_header_user_role_html = html.escape(str(_header_user_role))
+_header_avatar_html = html.escape(str(_header_avatar))
+_header_today = datetime.now().strftime("%d/%m/%Y")
 
 header_html = f"""
 <div class="portal-header">
-    <div>
-        <h1 class="brand-title">👓 SmartVision</h1>
-        <div class="brand-subtitle">Portal Corporativo do Consultor Ótico & Vendas</div>
-    </div>
-    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-        <div class="notification-pill">
-            🔔 Mensagens Não Lidas: <span class="badge-yellow">{unread_count}</span>
-        </div>
-        <div class="profile-card">
-            <div class="profile-avatar">{_header_avatar}</div>
+    <div class="portal-header-inner">
+        <div class="brand-lockup">
+            <div class="brand-mark">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="6.2" cy="14.3" r="3.4"></circle>
+                    <circle cx="17.8" cy="14.3" r="3.4"></circle>
+                    <path d="M9.6 14.3h4.8M2.8 14.3 1.8 11M21.2 14.3l1-3.3M6.2 10.9 7.7 7.2h8.6l1.5 3.7"></path>
+                </svg>
+            </div>
             <div>
-                <div style="font-weight: 700; font-size: 0.95rem; color: #0F172A;">{_header_user_name}</div>
-                <div style="font-size: 0.8rem; color: #3942F6; font-weight: 600;">{_header_user_role}</div>
-                <div style="font-size: 0.75rem; color: #64748B;">Loja Matriz — Shopping Paulista</div>
+                <div class="brand-eyebrow"><span class="status-dot"></span> Plataforma de gestão óptica</div>
+                <div class="brand-title">Smart<span class="brand-accent">Vision</span></div>
+                <div class="brand-subtitle">Visão unificada da loja, do time e dos resultados.</div>
+            </div>
+        </div>
+        <div class="hero-actions">
+            <div class="hero-meta-row">
+                <span class="hero-chip">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path>
+                    </svg>
+                    {_header_today}
+                </span>
+                <span class="hero-chip">Loja 04 · Matriz</span>
+                <div class="notification-pill">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
+                    </svg>
+                    Central de avisos <span class="badge-yellow">{unread_count}</span>
+                </div>
+            </div>
+            <div class="profile-card">
+                <div class="profile-avatar">{_header_avatar_html}</div>
+                <div>
+                    <div class="profile-name">{_header_user_name_html}</div>
+                    <div class="profile-role">{_header_user_role_html}</div>
+                    <div class="profile-store">Shopping Paulista · Loja 04</div>
+                </div>
             </div>
         </div>
     </div>
@@ -847,15 +2385,18 @@ header_html = f"""
 st.markdown(header_html, unsafe_allow_html=True)
 
 # Barra de Pesquisa Rápida Global
-search_col1, search_col2 = st.columns([3, 1])
+search_col1, search_col2 = st.columns([3.6, 1.4])
 with search_col1:
     search_query = st.text_input(
         "🔍 Busca Rápida de Avisos, Procedimentos e Manuais:",
-        placeholder="Digite termos como 'Crizal', 'Atestado', 'Comissão', 'Horas', 'Multifocal'...",
+        placeholder="Buscar avisos, procedimentos, manuais ou colaboradores...",
         label_visibility="collapsed"
     )
 with search_col2:
-    st.markdown(f"<div style='padding-top: 8px; font-size: 0.85rem; color: #64748B;'><b>Data de Hoje:</b> {datetime.now().strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='today-pill'><span>📅</span> Hoje · {_header_today}</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -865,8 +2406,12 @@ if menu_option == "🏠 O Meu Painel":
     _welcome_name = "visitante"
     if st.session_state.authenticated and st.session_state.auth_user:
         _welcome_name = st.session_state.auth_user.get("name") or "usuário"
-    st.subheader(f"👋 Bem-vindo de volta, {_welcome_name}!")
-    st.markdown("Aqui está o panorama atualizado das suas metas, avisos e atividades de hoje.")
+    _render_page_header(
+        "👋",
+        f"Olá, {_welcome_name}",
+        "Aqui está o panorama atualizado das suas metas, avisos e atividades de hoje.",
+        "Visão geral · Meu painel",
+    )
 
     # Alerta Urgente em Destaque no Topo (Amarelo #F8B807)
     urgent_notices = [n for n in MOCK_NOTICES if n["urgent"] and n["id"] not in st.session_state.notices_read]
@@ -967,8 +2512,12 @@ if menu_option == "🏠 O Meu Painel":
 # SEÇÃO 2: AS MINHAS METAS & COMISSÕES (CHANGE 2)
 # -----------------------------------------------------------------------------
 elif menu_option == "🎯 As Minhas Metas & Comissões":
-    st.subheader("🎯 Acompanhamento de Metas e Simulador de Comissões")
-    st.markdown("Monitore a sua evolução mensal, entenda o cálculo das suas comissões e simule ganhos adicionais.")
+    _render_page_header(
+        "🎯",
+        "Metas & Comissões",
+        "Monitore a sua evolução mensal, entenda o cálculo das suas comissões e simule ganhos adicionais.",
+        "Performance comercial",
+    )
 
     meta_individual = 60000.0
     vendido_atual = 46800.0
@@ -1087,8 +2636,12 @@ elif menu_option == "🎯 As Minhas Metas & Comissões":
 # SEÇÃO 3: MURAL DO RH & COMUNICAÇÃO (CHANGE 3)
 # -----------------------------------------------------------------------------
 elif menu_option == "📢 Mural do RH & Comunicação":
-    st.subheader("📢 Mural Oficial de Comunicação & RH")
-    st.markdown("Fique por dentro das novidades, comunicados operacionais, avisos da diretoria e aniversariantes.")
+    _render_page_header(
+        "📢",
+        "Mural & Comunicação",
+        "Fique por dentro das novidades, comunicados operacionais, avisos da diretoria e aniversariantes.",
+        "Cultura & pessoas",
+    )
 
     tab_mural, tab_rec = st.tabs(["📋 Mural de Avisos Oficiais", "🎉 Reconhecimento & Aniversários"])
 
@@ -1179,8 +2732,12 @@ elif menu_option == "📢 Mural do RH & Comunicação":
 # SEÇÃO 4: CENTRAL DO COLABORADOR (RH, DOCUMENTOS & HORÁRIOS - CHANGE 4)
 # -----------------------------------------------------------------------------
 elif menu_option == "📂 Central do Colaborador":
-    st.subheader("📂 Central do Colaborador: Folha, Ponto & Solicitações")
-    st.markdown("Acesse seus comprovantes de rendimento, controle seu saldo de banco de horas e envie pedidos formais ao RH.")
+    _render_page_header(
+        "📂",
+        "Central do Colaborador",
+        "Acesse seus comprovantes de rendimento, controle seu saldo de banco de horas e envie pedidos formais ao RH.",
+        "Documentos & jornada",
+    )
 
     _user = st.session_state.auth_user or {}
     _role = (_user.get("role") or "").lower()
@@ -1434,8 +2991,12 @@ Status: Autenticado digitalmente
 # SEÇÃO 5: ACADEMIA SMARTVISION (TREINOS & GUIA DE LENTES - CHANGE 5)
 # -----------------------------------------------------------------------------
 elif menu_option == "🎓 Academia SmartVision":
-    st.subheader("🎓 Academia SmartVision & Guia Técnico de Lentes")
-    st.markdown("Consulte a tabela comparativa de materiais e especialize-se com microlearnings rápidos de alto impacto.")
+    _render_page_header(
+        "🎓",
+        "Academia SmartVision",
+        "Consulte a tabela comparativa de materiais e especialize-se com microlearnings rápidos de alto impacto.",
+        "Conhecimento & excelência técnica",
+    )
 
     tab_guia, tab_cursos = st.tabs(["👓 Guia Rápido de Lentes e Materiais", "📚 Módulos de Microlearning & Certificados"])
 
@@ -1543,8 +3104,12 @@ elif menu_option == "🎓 Academia SmartVision":
 # SEÇÃO 6: ATALHOS OPERACIONAIS (PDV / RECEITAS / OS - CHANGE 6)
 # -----------------------------------------------------------------------------
 elif menu_option == "⚡ Atalhos Operacionais":
-    st.subheader("⚡ Atalhos Operacionais do Consultor")
-    st.markdown("Acesse diretamente as rotinas mais frequentes da ótica com poucos cliques.")
+    _render_page_header(
+        "⚡",
+        "Atalhos Operacionais",
+        "Acesse diretamente as rotinas mais frequentes da ótica com poucos cliques.",
+        "Produtividade no balcão",
+    )
 
     acao = st.radio(
         "Selecione o Fluxo Operacional Rápido:",
@@ -1614,9 +3179,13 @@ elif menu_option == "📋 Catálogo de Produtos":
         st.error("Módulo de catálogo indisponível. Verifique a instalação do projeto.")
         st.stop()
 
-    st.subheader("📋 Catálogo de Produtos")
+    _render_page_header(
+        "📋",
+        "Catálogo de Produtos",
+        "Consulta por SKU, nome e categoria, com cadastro integrado ao estoque auditado da loja.",
+        "Gestão de sortimento",
+    )
     st.caption(
-        "Consulta por SKU/nome/categoria e cadastro de produtos ópticos. "
         "O saldo inicial é sempre 0; entradas e ajustes passam pelo estoque auditado."
     )
 
@@ -1788,7 +3357,12 @@ elif menu_option == "📋 Catálogo de Produtos":
 # SEÇÃO 7: GESTÃO DE ESTOQUE AUDITADO & REPOSIÇÃO (SMARTVISION CORE)
 # -----------------------------------------------------------------------------
 elif menu_option == "📦 Gestão de Estoque Auditado":
-    st.subheader("📦 Módulo de Estoque Auditado & Reposição (Replenishment)")
+    _render_page_header(
+        "📦",
+        "Estoque Auditado",
+        "Entradas, saídas e reposição com rastreabilidade completa e validação estrita contra saldo negativo.",
+        "Operações & conformidade",
+    )
     st.info("💡 **Conformidade Crítica**: Todas as entradas e saídas exigem registro prévio de auditoria na tabela `stock_movement` e validação estrita contra saldo negativo.")
 
     # Obter produtos cadastrados (do Xano se disponível ou mock completo)
@@ -1937,8 +3511,13 @@ elif menu_option == "📦 Gestão de Estoque Auditado":
 # CHANGE 03: INVENTÁRIO FÍSICO & CONCILIAÇÃO DE ESTOQUE
 # -----------------------------------------------------------------------------
 elif menu_option == "📦 Inventário Físico & Conciliação":
-    st.subheader("📦 Inventário Físico & Conciliação de Estoque")
-    st.caption("Fluxo de ponta a ponta: abertura → contagem física → conciliação → aprovação do gestor → aplicação do ajuste (reutiliza o ledger de auditoria da Change 02).")
+    _render_page_header(
+        "🧮",
+        "Inventário Físico & Conciliação",
+        "Fluxo de ponta a ponta: abertura, contagem física, conciliação, aprovação do gestor e aplicação do ajuste auditado.",
+        "Controle & acuracidade",
+    )
+    st.caption("O ajuste reutiliza o ledger de auditoria do estoque, garantindo rastreabilidade completa.")
 
     # ------------------------------------------------------------------
     # Helpers de persistência (real via Xano ou mock de demonstração)
@@ -2313,20 +3892,28 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                     p = product_by_id.get(d.get("product_id"), {})
                     dtype = d.get("divergence_type", "none")
                     badge = {"none": "✅ Sem divergência", "shortage": "⚠️ Falta de estoque", "overage": "📦 Sobra de estoque"}.get(dtype, dtype)
+                    badge_class = {
+                        "none": "status-success",
+                        "shortage": "status-warning",
+                        "overage": "status-info",
+                    }.get(dtype, "status-info")
                     with st.container():
                         st.markdown(f"""
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div><b>{p.get('name', 'Produto')} ({p.get('sku','')})</b></div>
-                                <div style="font-weight:700;">{badge}</div>
+                        <div class="data-card">
+                            <div class="data-card-head">
+                                <div>
+                                    <div class="data-card-title">{p.get('name', 'Produto')}</div>
+                                    <div class="data-card-meta">SKU {p.get('sku','—')} · Divergência #{d.get('id')}</div>
+                                </div>
+                                <span class="status-badge {badge_class}">{badge}</span>
                             </div>
-                            <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                            <div class="data-card-body">
                                 Contado: <b>{d.get('counted_quantity')}</b> &nbsp;|&nbsp;
                                 Referência (sistema): <b>{d.get('reference_quantity')}</b> &nbsp;|&nbsp;
                                 Diferença: <b>{d.get('difference')}</b> &nbsp;|&nbsp;
                                 Status: <b>{d.get('status')}</b>
                             </div>
-                            <div style="font-size:0.8rem; margin-top:4px;">Impacto: {d.get('impact','')}</div>
+                            <div class="data-card-meta">Impacto: {d.get('impact','—')}</div>
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -2352,12 +3939,15 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                     p = product_by_id.get(d.get("product_id"), {})
                     with st.container():
                         st.markdown(f"""
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div><b>{p.get('name', 'Produto')} ({p.get('sku','')})</b></div>
-                                <div style="font-weight:700; color:#b45309;">Pendente</div>
+                        <div class="data-card data-card--warning">
+                            <div class="data-card-head">
+                                <div>
+                                    <div class="data-card-title">{p.get('name', 'Produto')}</div>
+                                    <div class="data-card-meta">SKU {p.get('sku','—')} · Divergência #{d.get('id')}</div>
+                                </div>
+                                <span class="status-badge status-warning">Pendente</span>
                             </div>
-                            <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                            <div class="data-card-body">
                                 Contado: <b>{d.get('counted_quantity')}</b> &nbsp;|&nbsp;
                                 Referência: <b>{d.get('reference_quantity')}</b> &nbsp;|&nbsp;
                                 Diferença: <b>{d.get('difference')}</b> ({d.get('divergence_type')})
@@ -2508,12 +4098,15 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                 for d in applied:
                     p = product_by_id.get(d.get("product_id"), {})
                     st.markdown(f"""
-                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:8px; margin-bottom:6px; background:#f8fafc;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div><b>{p.get('name', 'Produto')} ({p.get('sku','')})</b></div>
-                            <div style="font-weight:700; color:#10b981;">Ajuste aplicado</div>
+                    <div class="data-card data-card--success">
+                        <div class="data-card-head">
+                            <div>
+                                <div class="data-card-title">{p.get('name', 'Produto')}</div>
+                                <div class="data-card-meta">SKU {p.get('sku','—')} · Ajuste #{d.get('id')}</div>
+                            </div>
+                            <span class="status-badge status-success">Ajuste aplicado</span>
                         </div>
-                        <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">
+                        <div class="data-card-body">
                             Movimento de ajuste (ledger): <b>#{d.get('adjustment_movement_id')}</b> &nbsp;|&nbsp;
                             Contado: <b>{d.get('counted_quantity')}</b> &nbsp;|&nbsp;
                             Referência: <b>{d.get('reference_quantity')}</b> &nbsp;|&nbsp;
@@ -2523,8 +4116,12 @@ elif menu_option == "📦 Inventário Físico & Conciliação":
                     """, unsafe_allow_html=True)
 
 elif menu_option == "🚚 Saídas de Estoque":
-    st.markdown('<div class="main-header">🚚 Gestão de Saídas de Estoque (Outbound Operations)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Registro e processamento de saídas (Venda, Laboratório, Perda, Operacional) com bloqueio de saldo negativo e auditoria prévia.</div>', unsafe_allow_html=True)
+    _render_page_header(
+        "🚚",
+        "Saídas de Estoque",
+        "Registro e processamento de saídas de venda, laboratório, perda e operação, com bloqueio de saldo negativo e auditoria prévia.",
+        "Outbound operations",
+    )
 
     _outbound_user = st.session_state.get("auth_user") or {}
     _outbound_token = st.session_state.get("auth_token")
@@ -2802,39 +4399,36 @@ elif menu_option == "🚚 Saídas de Estoque":
                 is_completed = out_item.get("status") == "Concluida"
                 qty_label = f"-{out_item.get('quantity')}" if is_completed else f"{out_item.get('quantity')}"
                 qty_color = "#dc2626" if is_completed else "#334155"
-                st_color = {
-                    "Concluida": "#10b981",
-                    "AguardandoAprovacao": "#f59e0b",
-                    "Pendente": "#6366f1",
-                    "Rejeitada": "#ef4444",
-                    "Cancelada": "#64748b",
-                    "FalhaNoProcessamento": "#f97316"
-                }.get(out_item.get("status"), "#0f172a")
+                st_badge_class = {
+                    "Concluida": "status-success",
+                    "AguardandoAprovacao": "status-warning",
+                    "Pendente": "status-info",
+                    "Rejeitada": "status-danger",
+                    "Cancelada": "status-info",
+                    "FalhaNoProcessamento": "status-danger",
+                }.get(out_item.get("status"), "status-info")
 
                 st.markdown(f"""
-                <div style="border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; background:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="data-card">
+                    <div class="data-card-head">
                         <div>
-                            <span style="font-weight:700; font-size:1.05rem; color:#0f172a;">Saída #{out_item.get('id')}</span> &nbsp;
-                            <span style="background:#e0e7ff; color:#3730a3; padding:2px 8px; border-radius:12px; font-size:0.8rem; font-weight:600;">{out_item.get('type')}</span> &nbsp;
-                            <span style="color:#64748b; font-size:0.85rem;">{out_item.get('created_at')}</span>
+                            <div class="data-card-title">Saída #{out_item.get('id')} <span class="type-chip">{out_item.get('type')}</span></div>
+                            <div class="data-card-meta">Registrada em {out_item.get('created_at')}</div>
                         </div>
-                        <div style="font-weight:700; color:{st_color}; font-size:0.95rem; border:1px solid {st_color}; padding:2px 10px; border-radius:14px;">
-                            {out_item.get('status')}
-                        </div>
+                        <span class="status-badge {st_badge_class}">{out_item.get('status')}</span>
                     </div>
-                    <div style="margin-top:8px; font-size:0.92rem; color:#334155;">
+                    <div class="data-card-body">
                         <b>Produto:</b> {p.get('name', 'Produto')} ({p.get('sku', '')}) &nbsp;|&nbsp;
                         <b>Qtd:</b> <span style="color:{qty_color}; font-weight:700;">{qty_label} un.</span> &nbsp;|&nbsp;
                         <b>Referência:</b> {out_item.get('reference_type', '')} {out_item.get('reference_id', '-')} &nbsp;|&nbsp;
                         <b>Operador:</b> User #{out_item.get('user_id')}
                     </div>
-                    <div style="margin-top:4px; font-size:0.88rem; color:#64748b;">
+                    <div class="data-card-meta">
                         <b>Motivo:</b> {out_item.get('reason', '-')}
                         {f" &nbsp;|&nbsp; <b>Destino:</b> {out_item.get('destination')}" if out_item.get('destination') else ""}
                         {f" &nbsp;|&nbsp; <b>Movimento Ledger:</b> #{out_item.get('stock_movement_id')}" if out_item.get('stock_movement_id') else ""}
                     </div>
-                    {f'<div style="margin-top:6px; background:#fffbeb; padding:6px 10px; border-radius:6px; border-left:3px solid #f59e0b; font-size:0.85rem; color:#92400e;"><b>Justificativa de Auditoria:</b> {out_item.get("justification")}</div>' if out_item.get("justification") else ''}
+                    {f'<div class="audit-note"><b>Justificativa de Auditoria:</b> {out_item.get("justification")}</div>' if out_item.get("justification") else ''}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -2862,24 +4456,21 @@ elif menu_option == "🚚 Saídas de Estoque":
                 is_waiting = item.get("status") == "AguardandoAprovacao"
                 status_label = "Aguardando Gestor" if is_waiting else "Pendente de processamento"
                 st.markdown(f"""
-                <div style="border:1px solid #fcd34d; background:#fffdf5; border-radius:10px; padding:14px; margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="data-card data-card--warning">
+                    <div class="data-card-head">
                         <div>
-                            <span style="font-weight:700; color:#b45309; font-size:1.05rem;">Solicitação #{item.get('id')} — Tipo: {item.get('type')}</span>
+                            <div class="data-card-title">Solicitação #{item.get('id')} <span class="type-chip">{item.get('type')}</span></div>
+                            <div class="data-card-meta">Operação aguardando validação gerencial</div>
                         </div>
-                        <span style="background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.85rem;">{status_label}</span>
+                        <span class="status-badge status-warning">{status_label}</span>
                     </div>
-                    <div style="margin-top:8px; font-size:0.92rem; color:#1e293b;">
+                    <div class="data-card-body">
                         <b>Produto:</b> {p.get('name', 'Produto')} ({p.get('sku', '')}) &nbsp;|&nbsp;
                         <b>Quantidade:</b> {item.get('quantity')} un. &nbsp;|&nbsp;
                         <b>Solicitante:</b> Usuário #{item.get('user_id')}
                     </div>
-                    <div style="margin-top:4px; font-size:0.88rem; color:#475569;">
-                        <b>Motivo:</b> {item.get('reason')}
-                    </div>
-                    <div style="margin-top:4px; font-size:0.88rem; color:#92400e;">
-                        <b>Justificativa de perda:</b> {item.get('justification', 'Não informada')}
-                    </div>
+                    <div class="data-card-meta"><b>Motivo:</b> {item.get('reason')}</div>
+                    <div class="audit-note"><b>Justificativa de perda:</b> {item.get('justification', 'Não informada')}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -2952,11 +4543,14 @@ elif menu_option == "🚚 Saídas de Estoque":
 # CHANGE 05: ALERTAS DE ESTOQUE E REPOSIÇÃO
 # -----------------------------------------------------------------------------
 elif menu_option == "🔔 Alertas & Reposição":
-    st.subheader("🔔 Alertas de Estoque & Sugestões de Reposição")
+    _render_page_header(
+        "🔔",
+        "Alertas & Reposição",
+        "Monitoramento de ruptura, inatividade e sugestões de reposição calculadas pelo backend Xano.",
+        "Inteligência de estoque",
+    )
     st.caption(
-        "Monitoramento de ruptura (LOW_STOCK) e inatividade (INACTIVE), ciclo de vida dos "
-        "alertas e sugestões de reposição. Toda regra é calculada no backend Xano — esta tela "
-        "apenas consome a API e apresenta o resultado."
+        "Toda regra é calculada no backend — esta tela apenas consome a API e apresenta o resultado."
     )
 
     # Sem mock: se o backend não estiver acessível, é estado de erro explícito.
@@ -2987,11 +4581,17 @@ elif menu_option == "🔔 Alertas & Reposição":
     # ------------------------------------------------------------------
     # Usuário requisitante (todo endpoint exige user_id; perfil é validado no backend)
     # ------------------------------------------------------------------
+    _alert_auth_user = st.session_state.get("auth_user") or {}
+    try:
+        _alert_default_user_id = max(int(_alert_auth_user.get("id") or 1), 1)
+    except (TypeError, ValueError):
+        _alert_default_user_id = 1
+
     col_uid1, col_uid2 = st.columns([1, 3])
     with col_uid1:
         alert_user_id = st.number_input(
             "ID do usuário requisitante:",
-            min_value=1, value=1, step=1, key="alert_user_id_input",
+            min_value=1, value=_alert_default_user_id, step=1, key="alert_user_id_input",
         )
     with col_uid2:
         st.info(
@@ -3006,7 +4606,21 @@ elif menu_option == "🔔 Alertas & Reposição":
         with st.spinner("Carregando resumo de alertas..."):
             alert_summary = xano_client.get_alerts_summary(int(alert_user_id))
     except Exception as exc:
-        st.error(f"Falha ao carregar o resumo de alertas: {exc}")
+        st.markdown("""
+        <div class="module-empty">
+            <div class="module-empty-icon">🔔</div>
+            <div>
+                <div class="module-empty-title">Monitoramento de alertas indisponível neste ambiente</div>
+                <p class="module-empty-text">
+                    O serviço de alertas ainda não foi publicado no backend configurado.
+                    Esta tela permanece sem dados simulados para não exibir indicadores imprecisos.
+                    Tente novamente quando o módulo estiver disponível.
+                </p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        with st.expander("Detalhes técnicos"):
+            st.code(str(exc))
         st.stop()
 
     actor_role = alert_summary.get("actor_role", "")
