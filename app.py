@@ -27,9 +27,11 @@ if os.path.exists(_env_file):
 try:
     from services import xano_client
     from services import auth_service
+    from services import product_catalog
 except Exception:
     xano_client = None
     auth_service = None
+    product_catalog = None
 
 # Configuração da Página
 st.set_page_config(
@@ -711,6 +713,7 @@ _MENU_OPTIONS = [
     "📂 Central do Colaborador",
     "🎓 Academia SmartVision",
     "⚡ Atalhos Operacionais",
+    "📋 Catálogo de Produtos",
     "📦 Gestão de Estoque Auditado",
     "📦 Inventário Físico & Conciliação",
     "🚚 Saídas de Estoque",
@@ -1463,6 +1466,180 @@ elif menu_option == "⚡ Atalhos Operacionais":
             </div>
             """, unsafe_allow_html=True)
 
+
+# -----------------------------------------------------------------------------
+# CHANGE 01: CATÁLOGO DE PRODUTOS (CONSULTA E CADASTRO)
+# -----------------------------------------------------------------------------
+elif menu_option == "📋 Catálogo de Produtos":
+    if product_catalog is None:
+        st.error("Módulo de catálogo indisponível. Verifique a instalação do projeto.")
+        st.stop()
+
+    st.subheader("📋 Catálogo de Produtos")
+    st.caption(
+        "Consulta por SKU/nome/categoria e cadastro de produtos ópticos. "
+        "O saldo inicial é sempre 0; entradas e ajustes passam pelo estoque auditado."
+    )
+
+    _catalog_flash = st.session_state.pop("catalog_flash", None)
+    if _catalog_flash:
+        st.success(_catalog_flash)
+
+    catalog_tab, create_tab = st.tabs(["🔎 Consulta", "➕ Cadastrar Produto"])
+
+    with catalog_tab:
+        st.markdown("### Consulta e filtros")
+        col_filter_1, col_filter_2 = st.columns([2, 1])
+        with col_filter_1:
+            catalog_search = st.text_input(
+                "Buscar por SKU ou nome",
+                placeholder="Ex.: ARM-RAY, Ray-Ban, Crizal...",
+                key="catalog_search",
+            )
+        with col_filter_2:
+            catalog_category = st.selectbox(
+                "Categoria",
+                options=["Todas", *product_catalog.PRODUCT_CATEGORIES],
+                key="catalog_category",
+            )
+
+        catalog_products = []
+        catalog_error = None
+        if not (xano_client and os.getenv("XANO_BASE_URL")):
+            catalog_error = "Backend Xano não configurado (XANO_BASE_URL)."
+        else:
+            try:
+                catalog_products = xano_client.list_products(
+                    product_catalog.filter_params(catalog_category, catalog_search)
+                )
+            except Exception as exc:
+                catalog_error = str(exc)
+
+        if catalog_error:
+            st.error("Não foi possível consultar o catálogo: " + catalog_error)
+        else:
+            metric_col_1, metric_col_2 = st.columns(2)
+            metric_col_1.metric("Produtos encontrados", len(catalog_products))
+            total_stock = sum(int(p.get("current_stock") or 0) for p in catalog_products)
+            metric_col_2.metric("Saldo físico total", f"{total_stock} un")
+
+            if not catalog_products:
+                st.info("Nenhum produto encontrado para os filtros informados.")
+            else:
+                rows = []
+                for p in catalog_products:
+                    rows.append({
+                        "ID": p.get("id"),
+                        "SKU": p.get("sku"),
+                        "Produto": p.get("name"),
+                        "Categoria": p.get("category"),
+                        "Marca": p.get("brand"),
+                        "Modelo": p.get("model"),
+                        "Preço de venda": p.get("sale_price"),
+                        "Estoque": p.get("current_stock"),
+                        "Mínimo": p.get("min_stock"),
+                        "Localização": p.get("location"),
+                    })
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    with create_tab:
+        st.markdown("### Cadastro de produto")
+        st.caption("Campos com * são obrigatórios. Para lentes, os atributos técnicos também são obrigatórios.")
+
+        new_category = st.selectbox(
+            "Categoria *",
+            options=list(product_catalog.PRODUCT_CATEGORIES),
+            key="catalog_new_category",
+        )
+        is_lens = new_category in product_catalog.LENS_CATEGORIES
+
+        with st.form("catalog_create_form", clear_on_submit=True):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                new_sku = st.text_input("SKU *", placeholder="Ex.: ARM-001")
+                new_brand = st.text_input("Marca *", placeholder="Ex.: Ray-Ban")
+                new_cost_price = st.number_input(
+                    "Custo (R$)", min_value=0.0, value=0.0, step=10.0, format="%.2f"
+                )
+                new_min_stock = st.number_input(
+                    "Estoque mínimo *", min_value=0, value=0, step=1
+                )
+            with col_b:
+                new_name = st.text_input("Nome *", placeholder="Ex.: Armação Aviador")
+                new_model = st.text_input("Modelo *", placeholder="Ex.: Aviador Classic")
+                new_sale_price = st.number_input(
+                    "Preço de venda (R$) *", min_value=0.0, value=0.0, step=10.0, format="%.2f"
+                )
+                new_location = st.text_input("Localização *", placeholder="Ex.: Vitrine A1")
+
+            new_sphere = new_cylinder = new_axis = new_addition = None
+            new_lens_type = new_treatment = new_material = None
+            if is_lens:
+                st.markdown("#### Atributos técnicos da lente")
+                col_l1, col_l2, col_l3 = st.columns(3)
+                with col_l1:
+                    new_sphere = st.number_input(
+                        "Grau esférico *", min_value=-20.0, max_value=20.0,
+                        value=0.0, step=0.25, format="%.2f",
+                    )
+                    new_axis = st.number_input(
+                        "Eixo (°)", min_value=0, max_value=180, value=0, step=1
+                    )
+                with col_l2:
+                    new_cylinder = st.number_input(
+                        "Grau cilíndrico *", min_value=-20.0, max_value=20.0,
+                        value=0.0, step=0.25, format="%.2f",
+                    )
+                    new_addition = st.number_input(
+                        "Adição", min_value=0.0, max_value=4.0,
+                        value=0.0, step=0.25, format="%.2f",
+                    )
+                with col_l3:
+                    default_lens_type = "Monofocal" if new_category == "Lente Oftálmica" else "Esférica"
+                    new_lens_type = st.text_input("Tipo de lente *", value=default_lens_type)
+                    new_treatment = st.text_input("Tratamento", placeholder="Ex.: Crizal")
+                    new_material = st.text_input("Material", placeholder="Ex.: Resina 1.67")
+
+            submitted = st.form_submit_button("Cadastrar produto", type="primary")
+
+        if submitted:
+            values = {
+                "sku": new_sku,
+                "name": new_name,
+                "category": new_category,
+                "brand": new_brand,
+                "model": new_model,
+                "cost_price": new_cost_price,
+                "sale_price": new_sale_price,
+                "min_stock": new_min_stock,
+                "location": new_location,
+                "sphere_power": new_sphere,
+                "cylinder_power": new_cylinder,
+                "axis": new_axis,
+                "addition": new_addition,
+                "lens_type": new_lens_type,
+                "treatment": new_treatment,
+                "material": new_material,
+            }
+            validation_errors = product_catalog.validate_product_payload(values)
+            if validation_errors:
+                for message in validation_errors:
+                    st.error(message)
+            elif not (xano_client and os.getenv("XANO_BASE_URL")):
+                st.error("Backend Xano não configurado; o cadastro não foi enviado.")
+            else:
+                payload = product_catalog.build_product_payload(values)
+                try:
+                    created = xano_client.create_product(payload)
+                except Exception as exc:
+                    st.error("Erro ao cadastrar produto: " + str(exc))
+                else:
+                    created_id = created.get("id") if isinstance(created, dict) else None
+                    st.session_state["catalog_flash"] = (
+                        "✅ Produto cadastrado com sucesso"
+                        + (f" (ID {created_id})." if created_id is not None else ".")
+                    )
+                    st.rerun()
 
 # -----------------------------------------------------------------------------
 # SEÇÃO 7: GESTÃO DE ESTOQUE AUDITADO & REPOSIÇÃO (SMARTVISION CORE)

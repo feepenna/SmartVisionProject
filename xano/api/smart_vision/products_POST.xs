@@ -1,4 +1,6 @@
-// Cadastrar um novo produto no catálogo
+// Cadastrar um novo produto no catálogo.
+// Sem autenticação por escopo desta Change; a integração de auth/RBAC está
+// prevista na Change 07. O saldo inicial é sempre 0 e só muda via movimentação auditada.
 query products verb=POST {
   api_group = "Smart Vision"
 
@@ -6,16 +8,15 @@ query products verb=POST {
     text sku filters=trim
     text name filters=trim
     text category filters=trim
-    text brand? filters=trim
-    text model? filters=trim
+    text brand filters=trim
+    text model filters=trim
     decimal cost_price?
     decimal sale_price
     int min_stock
-    text location? filters=trim
-  
-    // Atributos ópticos (lentes)
+    text location filters=trim
+
+    // Atributos ópticos (obrigatórios para lentes)
     decimal sphere_power?
-  
     decimal cylinder_power?
     int axis?
     decimal addition?
@@ -25,34 +26,50 @@ query products verb=POST {
   }
 
   stack {
-    // 1. Validar estoque mínimo não negativo
+    // 1. Validar campos gerais obrigatórios
+    precondition ($input.sku != "" && $input.name != "" && $input.category != "" && $input.brand != "" && $input.model != "" && $input.location != "") {
+      error_type = "inputerror"
+      error = "Preencha os campos obrigatórios: SKU, nome, categoria, marca, modelo e localização."
+    }
+
+    // 2. Validar preço e estoque mínimo não negativos
+    precondition ($input.sale_price >= 0) {
+      error_type = "inputerror"
+      error = "O preço de venda deve ser maior ou igual a zero."
+    }
+
     precondition ($input.min_stock >= 0) {
       error_type = "inputerror"
       error = "O estoque mínimo deve ser maior ou igual a zero."
     }
-  
-    // 2. Validar obrigatoriedade de campos ópticos quando for lente
+
+    // 3. Validar atributos técnicos quando for lente
     conditional {
       if ($input.category == "Lente Oftálmica" || $input.category == "Lente de Contato") {
-        precondition ($input.sphere_power != null) {
+        precondition ($input.sphere_power != null && $input.cylinder_power != null && $input.lens_type != null && $input.lens_type != "") {
           error_type = "inputerror"
-          error = "O grau esférico é obrigatório para lentes."
+          error = "Para lentes, informe grau esférico, grau cilíndrico e tipo de lente."
+        }
+
+        precondition ($input.axis == null || ($input.axis >= 0 && $input.axis <= 180)) {
+          error_type = "inputerror"
+          error = "O eixo deve estar entre 0 e 180 graus."
         }
       }
     }
-  
-    // 3. Validar se o SKU já existe
+
+    // 4. Validar se o SKU já existe
     db.has product {
       field_name = "sku"
       field_value = $input.sku
     } as $sku_exists
-  
+
     precondition (!$sku_exists) {
       error_type = "badrequest"
       error = "O SKU informado já está em uso por outro produto."
     }
-  
-    // 4. Inserir o produto
+
+    // 5. Inserir o produto (saldo inicial 0; alterações somente via auditoria)
     db.add product {
       data = {
         sku           : $input.sku
