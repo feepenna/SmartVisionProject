@@ -27,15 +27,13 @@ query replenishment verb=GET {
     }
 
     precondition ($actor.role == "Gestor" || $actor.role == "Estoquista" || $actor.role == "Vendedor" || $actor.role == "Técnico" || $actor.role == "admin" || $actor.role == "member") {
-      error_type = "forbidden"
+      error_type = "accessdenied"
       error = "Seu perfil não tem permissão para consultar sugestões de reposição."
     }
 
     // 2. Produtos monitorados com filtros opcionais
     db.query product {
-      where = ($db.product.alerts_enabled == true)
-        && (($input.category == null) || ($db.product.category == $input.category))
-        && (($input.product_id == null) || ($db.product.id == $input.product_id))
+      where = ($db.product.alerts_enabled == true && ($input.category == null || $db.product.category == $input.category) && ($input.product_id == null || $db.product.id == $input.product_id))
       sort = {id: "asc"}
       return = {type: "list"}
     } as $produtos
@@ -46,72 +44,77 @@ query replenishment verb=GET {
 
     conditional {
       if ($produtos != null) {
-        foreach $p in $produtos {
-          // Classificação pela regra única (nunca recalculada no frontend)
-          function.run "Smart Vision/classificar_produto" {
-            input = {
-              current_stock: $p.current_stock
-              min_stock    : $p.min_stock
-              target_stock : $p.target_stock
-            }
-          } as $classificacao
-
-          var $parametros_incompletos {
-            value = true
-            if ($p.target_stock != null) {
-              value = false
-            }
-          }
-
-          var $sugestao {
-            value = null
-          }
-
-          var $custo_estimado {
-            value = null
-          }
-
-          conditional {
-            if ($p.target_stock != null) {
-              // max(0, alvo - saldo): nunca sugere quantidade negativa
-              var $diferenca {
-                value = $p.target_stock|subtract:$p.current_stock
+        foreach ($produtos) {
+          each as $p {
+            // Classificação pela regra única (nunca recalculada no frontend)
+            function.run "Smart Vision/classificar_produto" {
+              input = {
+                current_stock: $p.current_stock
+                min_stock    : $p.min_stock
+                target_stock : $p.target_stock
               }
+            } as $classificacao
 
-              var.update $sugestao { value = $diferenca|max:0 }
+            var $parametros_incompletos {
+              value = true
+            }
 
-              conditional {
-                if (($p.cost_price != null) && ($sugestao > 0)) {
-                  var.update $custo_estimado { value = $sugestao|multiply:$p.cost_price }
+            conditional {
+              if ($p.target_stock != null) {
+                var.update $parametros_incompletos { value = false }
+              }
+            }
+
+            var $sugestao {
+              value = null
+            }
+
+            var $custo_estimado {
+              value = null
+            }
+
+            conditional {
+              if ($p.target_stock != null) {
+                // max(0, alvo - saldo): nunca sugere quantidade negativa
+                var $diferenca {
+                  value = $p.target_stock|subtract:$p.current_stock
+                }
+
+                var.update $sugestao { value = $diferenca|max:0 }
+
+                conditional {
+                  if ($p.cost_price != null && $sugestao > 0) {
+                    var.update $custo_estimado { value = $sugestao|multiply:$p.cost_price }
+                  }
                 }
               }
             }
-          }
 
-          var $item {
-            value = {}
-              |set:"product_id":$p.id
-              |set:"sku":$p.sku
-              |set:"nome":$p.name
-              |set:"categoria":$p.category
-              |set:"saldo":$p.current_stock
-              |set:"min_stock":$p.min_stock
-              |set:"target_stock":$p.target_stock
-              |set:"classificacao":$classificacao
-              |set:"sugestao":$sugestao
-              |set:"parametros_incompletos":$parametros_incompletos
-              |set:"custo_estimado":$custo_estimado
-          }
+            var $item {
+              value = {}
+                |set:"product_id":$p.id
+                |set:"sku":$p.sku
+                |set:"nome":$p.name
+                |set:"categoria":$p.category
+                |set:"saldo":$p.current_stock
+                |set:"min_stock":$p.min_stock
+                |set:"target_stock":$p.target_stock
+                |set:"classificacao":$classificacao
+                |set:"sugestao":$sugestao
+                |set:"parametros_incompletos":$parametros_incompletos
+                |set:"custo_estimado":$custo_estimado
+            }
 
-          array.push $resultado {
-            value = $item
+            array.push $resultado {
+              value = $item
+            }
           }
         }
       }
     }
-
-    response = $resultado
-    tags = ["smart-vision"]
-    guid = "replenishment_guid_001"
   }
+
+  response = $resultado
+  tags = ["smart-vision"]
+  guid = "replenishment_guid_001"
 }

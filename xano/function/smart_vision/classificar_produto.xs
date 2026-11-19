@@ -14,13 +14,19 @@ function "Smart Vision/classificar_produto" {
   stack {
     var $classificacao {
       value = "regular"
-      // crítico tem precedência (faixa mais grave)
+    }
+
+    // crítico tem precedência (faixa mais grave)
+    conditional {
       if ($input.current_stock <= $input.min_stock) {
-        value = "critico"
+        var.update $classificacao { value = "critico" }
       }
-      // insuficiente só entra fora da faixa crítica e com alvo configurado
-      if (($input.current_stock > $input.min_stock) && ($input.target_stock != null) && ($input.current_stock < $input.target_stock)) {
-        value = "insuficiente"
+    }
+
+    // insuficiente só entra fora da faixa crítica e com alvo configurado
+    conditional {
+      if ($input.current_stock > $input.min_stock && $input.target_stock != null && $input.current_stock < $input.target_stock) {
+        var.update $classificacao { value = "insuficiente" }
       }
     }
   }

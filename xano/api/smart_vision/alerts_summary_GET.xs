@@ -3,7 +3,7 @@
 // e inatividade calculada em tempo de consulta (não depende de avaliação prévia).
 // Permissões: leitura para todos os perfis. Retorna actor.role para o frontend
 // esconder botões fora do perfil (UX; a segurança continua no backend).
-query alerts/summary verb=GET {
+query "alerts/summary" verb=GET {
   api_group = "Smart Vision"
 
   input {
@@ -23,7 +23,7 @@ query alerts/summary verb=GET {
     }
 
     precondition ($actor.role == "Gestor" || $actor.role == "Estoquista" || $actor.role == "Vendedor" || $actor.role == "Técnico" || $actor.role == "admin" || $actor.role == "member") {
-      error_type = "forbidden"
+      error_type = "accessdenied"
       error = "Seu perfil não tem permissão para consultar o resumo de alertas."
     }
 
@@ -44,17 +44,17 @@ query alerts/summary verb=GET {
     } as $contagem_acompanhamento
 
     db.query stock_alert {
-      where = ($db.stock_alert.status != "Resolvido") && ($db.stock_alert.alert_type == "LOW_STOCK")
+      where = ($db.stock_alert.status != "Resolvido" && $db.stock_alert.alert_type == "LOW_STOCK")
       return = {type: "count"}
     } as $ativos_low_stock
 
     db.query stock_alert {
-      where = ($db.stock_alert.status != "Resolvido") && ($db.stock_alert.alert_type == "INACTIVE")
+      where = ($db.stock_alert.status != "Resolvido" && $db.stock_alert.alert_type == "INACTIVE")
       return = {type: "count"}
     } as $ativos_inactive
 
     db.query stock_alert {
-      where = ($db.stock_alert.status != "Resolvido") && ($db.stock_alert.criticality == "critico")
+      where = ($db.stock_alert.status != "Resolvido" && $db.stock_alert.criticality == "critico")
       return = {type: "count"}
     } as $criticos
 
@@ -65,7 +65,7 @@ query alerts/summary verb=GET {
     } as $monitorados
 
     db.query product {
-      where = ($db.product.alerts_enabled == true) && ($db.product.target_stock == null)
+      where = ($db.product.alerts_enabled == true && $db.product.target_stock == null)
       return = {type: "count"}
     } as $parametros_incompletos
 
@@ -86,31 +86,38 @@ query alerts/summary verb=GET {
 
     conditional {
       if ($lista_produtos != null) {
-        foreach $p in $lista_produtos {
-          var $janela_dias {
-            value = 30
-            if ($p.inactivity_days != null) {
-              value = $p.inactivity_days
+        foreach ($lista_produtos) {
+          each as $p {
+            // Prioridade da janela: produto > default 30 dias
+            var $janela_dias {
+              value = 30
             }
-          }
 
-          var $limite {
-            value = now|add_secs_to_timestamp:($janela_dias|multiply:86400)
-          }
+            conditional {
+              if ($p.inactivity_days != null) {
+                var.update $janela_dias { value = $p.inactivity_days }
+              }
+            }
 
-          db.query stock_movement {
-            where = ($db.stock_movement.product_id == $p.id)
-            sort = {created_at: "desc"}
-            return = {type: "single"}
-          } as $ultima_mov
+            var $limite {
+              value = now|add_secs_to_timestamp:($janela_dias|multiply:86400)
+            }
 
-          conditional {
+            db.query stock_movement {
+              where = ($db.stock_movement.product_id == $p.id)
+              sort = {created_at: "desc"}
+              return = {type: "single"}
+            } as $ultima_mov
+
             // Sem histórico nunca é tratado como inativo
-            if ($ultima_mov == null) {
-              var.update $sem_historico { value = $sem_historico|add:1 }
+            conditional {
+              if ($ultima_mov == null) {
+                var.update $sem_historico { value = $sem_historico|add:1 }
+              }
             }
-            else {
-              if ($ultima_mov.created_at < $limite) {
+
+            conditional {
+              if ($ultima_mov != null && $ultima_mov.created_at < $limite) {
                 var.update $inativos { value = $inativos|add:1 }
               }
             }
@@ -118,21 +125,21 @@ query alerts/summary verb=GET {
         }
       }
     }
-
-    response = {}
-      |set:"alertas_ativos":$ativos
-      |set:"alertas_em_acompanhamento":$contagem_acompanhamento
-      |set:"alertas_em_aberto_status_ativo":$contagem_ativo
-      |set:"alertas_criticos":$criticos
-      |set:"ativos_low_stock":$ativos_low_stock
-      |set:"ativos_inactive":$ativos_inactive
-      |set:"produtos_monitorados":$monitorados
-      |set:"parametros_incompletos":$parametros_incompletos
-      |set:"produtos_inativos":$inativos
-      |set:"produtos_sem_historico":$sem_historico
-      |set:"actor_id":$actor.id
-      |set:"actor_role":$actor.role
-    tags = ["smart-vision"]
-    guid = "alerts_summary_guid_001"
   }
+
+  response = {}
+    |set:"alertas_ativos":$ativos
+    |set:"alertas_em_acompanhamento":$contagem_acompanhamento
+    |set:"alertas_em_aberto_status_ativo":$contagem_ativo
+    |set:"alertas_criticos":$criticos
+    |set:"ativos_low_stock":$ativos_low_stock
+    |set:"ativos_inactive":$ativos_inactive
+    |set:"produtos_monitorados":$monitorados
+    |set:"parametros_incompletos":$parametros_incompletos
+    |set:"produtos_inativos":$inativos
+    |set:"produtos_sem_historico":$sem_historico
+    |set:"actor_id":$actor.id
+    |set:"actor_role":$actor.role
+  tags = ["smart-vision"]
+  guid = "alerts_summary_guid_001"
 }

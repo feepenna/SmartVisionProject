@@ -45,16 +45,21 @@ function "Smart Vision/avaliar_alerta" {
     // 4. Condição atual para o tipo avaliado
     var $condicao {
       value = false
-      // LOW_STOCK: saldo dentro do estoque mínimo
+    }
+
+    conditional {
       if (($input.alert_type == "LOW_STOCK") && ($product.current_stock <= $product.min_stock)) {
-        value = true
+        var.update $condicao { value = true }
       }
     }
 
     var $janela_dias {
       value = 30
+    }
+
+    conditional {
       if ($product.inactivity_days != null) {
-        value = $product.inactivity_days
+        var.update $janela_dias { value = $product.inactivity_days }
       }
     }
 
@@ -70,13 +75,15 @@ function "Smart Vision/avaliar_alerta" {
 
     var $tem_historico {
       value = false
+    }
+
+    conditional {
       if ($ultima_mov != null) {
-        value = true
+        var.update $tem_historico { value = true }
       }
     }
 
     conditional {
-      // INACTIVE: somente com histórico existente (sem histórico ≠ inativo)
       if (($input.alert_type == "INACTIVE") && $tem_historico && ($ultima_mov.created_at < $limite)) {
         var.update $condicao { value = true }
       }
@@ -85,8 +92,11 @@ function "Smart Vision/avaliar_alerta" {
     // 5. Monitoramento desativado não cria nem resolve: apenas informa
     var $acao {
       value = "nenhuma"
+    }
+
+    conditional {
       if ($product.alerts_enabled == false) {
-        value = "ignorado"
+        var.update $acao { value = "ignorado" }
       }
     }
 
@@ -99,18 +109,24 @@ function "Smart Vision/avaliar_alerta" {
 
     var $aberto {
       value = false
-      if (($ultimo != null) && ($ultimo.status != "Resolvido")) {
-        value = true
-      }
     }
 
     conditional {
-      // A. Condição valendo e nenhum alerta aberto: cria (respeitando silenciamento)
+      if (($ultimo != null) && ($ultimo.status != "Resolvido")) {
+        var.update $aberto { value = true }
+      }
+    }
+
+    // A. Condição valendo e nenhum alerta aberto: cria (respeitando silenciamento)
+    conditional {
       if ($condicao && !$aberto && ($product.alerts_enabled != false)) {
         var $silenciado {
           value = false
+        }
+
+        conditional {
           if (($ultimo != null) && ($ultimo.status == "Resolvido") && ($ultimo.resolution == "manual") && ($ultimo.condition_cleared_at == null)) {
-            value = true
+            var.update $silenciado { value = true }
           }
         }
 
@@ -118,7 +134,10 @@ function "Smart Vision/avaliar_alerta" {
           if ($silenciado) {
             var.update $acao { value = "silenciado" }
           }
-          else {
+        }
+
+        conditional {
+          if (!$silenciado) {
             db.add stock_alert {
               data = {
                 product_id         : $product.id
@@ -137,8 +156,10 @@ function "Smart Vision/avaliar_alerta" {
           }
         }
       }
+    }
 
-      // B. Condição normalizada com alerta aberto: auto-resolução registrada
+    // B. Condição normalizada com alerta aberto: auto-resolução registrada
+    conditional {
       if (!$condicao && $aberto) {
         db.edit stock_alert {
           field_name = "id"
@@ -154,9 +175,11 @@ function "Smart Vision/avaliar_alerta" {
 
         var.update $acao { value = "resolvido" }
       }
+    }
 
-      // C. Sem alerta aberto e o último resolvido ainda sem registro de normalização:
-      //    grava condition_cleared_at para permitir um novo ciclo rastreável depois
+    // C. Sem alerta aberto e o último resolvido ainda sem registro de normalização:
+    //    grava condition_cleared_at para permitir um novo ciclo rastreável depois
+    conditional {
       if (!$condicao && !$aberto && ($ultimo != null) && ($ultimo.status == "Resolvido") && ($ultimo.condition_cleared_at == null)) {
         db.edit stock_alert {
           field_name = "id"

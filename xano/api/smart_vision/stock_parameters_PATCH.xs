@@ -3,7 +3,7 @@
 // Validações: min_stock >= 0, target_stock >= 0 e >= min_stock (valor efetivo),
 // inactivity_days >= 1, alerts_enabled 0/1. alerta aberto nunca é apagado por aqui.
 // Permissões: somente Gestor (ou admin legado).
-query stock-parameters verb=PATCH {
+query "stock-parameters" verb=PATCH {
   api_group = "Smart Vision"
 
   input {
@@ -28,7 +28,7 @@ query stock-parameters verb=PATCH {
     }
 
     precondition ($actor.role == "Gestor" || $actor.role == "admin") {
-      error_type = "forbidden"
+      error_type = "accessdenied"
       error = "Apenas gestores podem alterar os parâmetros de estoque dos produtos."
     }
 
@@ -67,43 +67,54 @@ query stock-parameters verb=PATCH {
     // 4. Resolver valores efetivos (enviados sobrescrevem; resto preserva)
     var $novo_min {
       value = $produto.min_stock
+    }
+
+    conditional {
       if ($input.min_stock != null) {
-        value = $input.min_stock
+        var.update $novo_min { value = $input.min_stock }
       }
     }
 
     var $novo_target {
       value = $produto.target_stock
+    }
+
+    conditional {
       if ($input.target_stock != null) {
-        value = $input.target_stock
+        var.update $novo_target { value = $input.target_stock }
       }
     }
 
     var $nova_janela {
       value = $produto.inactivity_days
+    }
+
+    conditional {
       if ($input.inactivity_days != null) {
-        value = $input.inactivity_days
+        var.update $nova_janela { value = $input.inactivity_days }
       }
     }
 
     var $novos_alertas {
       value = $produto.alerts_enabled
+    }
+
+    conditional {
       if ($input.alerts_enabled == 1) {
-        value = true
+        var.update $novos_alertas { value = true }
       }
+    }
+
+    conditional {
       if ($input.alerts_enabled == 0) {
-        value = false
+        var.update $novos_alertas { value = false }
       }
     }
 
     // 5. Coerência entre mínimo e alvo com os valores efetivos
-    conditional {
-      if ($novo_target != null) {
-        precondition ($novo_target >= $novo_min) {
-          error_type = "inputerror"
-          error = "O estoque alvo deve ser maior ou igual ao estoque mínimo."
-        }
-      }
+    precondition ($novo_target == null || $novo_target >= $novo_min) {
+      error_type = "inputerror"
+      error = "O estoque alvo deve ser maior ou igual ao estoque mínimo."
     }
 
     // 6. Aplicar a configuração (nenhuma movimentação é criada aqui)
@@ -117,9 +128,9 @@ query stock-parameters verb=PATCH {
         alerts_enabled : $novos_alertas
       }
     } as $produto_atualizado
-
-    response = $produto_atualizado
-    tags = ["smart-vision"]
-    guid = "stock_parameters_guid_001"
   }
+
+  response = $produto_atualizado
+  tags = ["smart-vision"]
+  guid = "stock_parameters_guid_001"
 }

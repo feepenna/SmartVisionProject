@@ -1,0 +1,8 @@
+schema: spec-driven
+created: 2026-10-26
+skip_specs: true
+goal: >
+  Mudança operacional de publicação: corrige apenas sintaxe XanoScript e publica na
+  instância live objetos já especificados na Change 05
+  (openspec/changes/archive/stock-alerts-replenishment/specs/stock-alerts/spec.md).
+  Nenhum comportamento, contrato ou regra de negócio é alterado.

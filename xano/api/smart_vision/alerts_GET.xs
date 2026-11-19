@@ -25,7 +25,7 @@ query alerts verb=GET {
     }
 
     precondition ($actor.role == "Gestor" || $actor.role == "Estoquista" || $actor.role == "Vendedor" || $actor.role == "Técnico" || $actor.role == "admin" || $actor.role == "member") {
-      error_type = "forbidden"
+      error_type = "accessdenied"
       error = "Seu perfil não tem permissão para consultar alertas."
     }
 
@@ -42,9 +42,7 @@ query alerts verb=GET {
 
     // 3. Listar alertas (mais recente primeiro), com filtros opcionais
     db.query stock_alert {
-      where = (($input.status == null) || ($db.stock_alert.status == $input.status))
-        && (($input.alert_type == null) || ($db.stock_alert.alert_type == $input.alert_type))
-        && (($input.product_id == null) || ($db.stock_alert.product_id == $input.product_id))
+      where = ($input.status == null || $db.stock_alert.status == $input.status) && ($input.alert_type == null || $db.stock_alert.alert_type == $input.alert_type) && ($input.product_id == null || $db.stock_alert.product_id == $input.product_id)
       sort = {created_at: "desc"}
       return = {type: "list"}
     } as $alertas
@@ -56,43 +54,45 @@ query alerts verb=GET {
 
     conditional {
       if ($alertas != null) {
-        foreach $a in $alertas {
-          db.get product {
-            field_name = "id"
-            field_value = $a.product_id
-          } as $produto
+        foreach ($alertas) {
+          each as $a {
+            db.get product {
+              field_name = "id"
+              field_value = $a.product_id
+            } as $produto
 
-          var $item {
-            value = {}
-              |set:"id":$a.id
-              |set:"product_id":$a.product_id
-              |set:"produto_nome":$produto.name
-              |set:"produto_sku":$produto.sku
-              |set:"categoria":$produto.category
-              |set:"alert_type":$a.alert_type
-              |set:"status":$a.status
-              |set:"criticality":$a.criticality
-              |set:"observed_stock":$a.observed_stock
-              |set:"observed_min_stock":$a.observed_min_stock
-              |set:"detected_at":$a.detected_at
-              |set:"status_updated_at":$a.status_updated_at
-              |set:"resolved_at":$a.resolved_at
-              |set:"resolution":$a.resolution
-              |set:"condition_cleared_at":$a.condition_cleared_at
-              |set:"opened_by":$a.opened_by
-              |set:"updated_by":$a.updated_by
-              |set:"notes":$a.notes
-          }
+            var $item {
+              value = {}
+                |set:"id":$a.id
+                |set:"product_id":$a.product_id
+                |set:"produto_nome":$produto.name
+                |set:"produto_sku":$produto.sku
+                |set:"categoria":$produto.category
+                |set:"alert_type":$a.alert_type
+                |set:"status":$a.status
+                |set:"criticality":$a.criticality
+                |set:"observed_stock":$a.observed_stock
+                |set:"observed_min_stock":$a.observed_min_stock
+                |set:"detected_at":$a.detected_at
+                |set:"status_updated_at":$a.status_updated_at
+                |set:"resolved_at":$a.resolved_at
+                |set:"resolution":$a.resolution
+                |set:"condition_cleared_at":$a.condition_cleared_at
+                |set:"opened_by":$a.opened_by
+                |set:"updated_by":$a.updated_by
+                |set:"notes":$a.notes
+            }
 
-          array.push $resultado {
-            value = $item
+            array.push $resultado {
+              value = $item
+            }
           }
         }
       }
     }
-
-    response = $resultado
-    tags = ["smart-vision"]
-    guid = "alerts_list_guid_001"
   }
+
+  response = $resultado
+  tags = ["smart-vision"]
+  guid = "alerts_list_guid_001"
 }

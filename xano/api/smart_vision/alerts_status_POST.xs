@@ -5,7 +5,7 @@
 // condition_cleared_at só é preenchido quando a condição já normalizou — se ainda
 // vale, a avaliação não recria o alerta até a condição normalizar (silenciamento).
 // Permissões: Gestor, Estoquista ou admin (legado).
-query alerts/status verb=POST {
+query "alerts/status" verb=POST {
   api_group = "Smart Vision"
 
   input {
@@ -28,7 +28,7 @@ query alerts/status verb=POST {
     }
 
     precondition ($actor.role == "Gestor" || $actor.role == "Estoquista" || $actor.role == "admin") {
-      error_type = "forbidden"
+      error_type = "accessdenied"
       error = "Apenas gestores e estoquistas podem alterar o status de alertas."
     }
 
@@ -58,14 +58,23 @@ query alerts/status verb=POST {
     // 5. Validar transição permitida
     var $transicao_valida {
       value = false
+    }
+
+    conditional {
       if (($alerta.status == "Ativo") && ($input.status == "EmAcompanhamento")) {
-        value = true
+        var.update $transicao_valida { value = true }
       }
+    }
+
+    conditional {
       if (($alerta.status == "Ativo") && ($input.status == "Resolvido")) {
-        value = true
+        var.update $transicao_valida { value = true }
       }
+    }
+
+    conditional {
       if (($alerta.status == "EmAcompanhamento") && ($input.status == "Resolvido")) {
-        value = true
+        var.update $transicao_valida { value = true }
       }
     }
 
@@ -88,19 +97,23 @@ query alerts/status verb=POST {
 
         var $condicao_ainda_vale {
           value = false
-          // LOW_STOCK: saldo ainda dentro do mínimo
+        }
+
+        conditional {
           if (($alerta.alert_type == "LOW_STOCK") && ($produto != null) && ($produto.current_stock <= $produto.min_stock)) {
-            value = true
+            var.update $condicao_ainda_vale { value = true }
           }
         }
 
         conditional {
-          // INACTIVE: última movimentação ainda além da janela (com histórico)
           if (($alerta.alert_type == "INACTIVE") && ($produto != null)) {
             var $janela_dias {
               value = 30
+            }
+
+            conditional {
               if ($produto.inactivity_days != null) {
-                value = $produto.inactivity_days
+                var.update $janela_dias { value = $produto.inactivity_days }
               }
             }
 
@@ -129,11 +142,13 @@ query alerts/status verb=POST {
     }
 
     // 7. Montar a atualização preservando campos históricos
-    //    (notes só é gravado quando informado no request)
     var $notas {
       value = $alerta.notes
+    }
+
+    conditional {
       if ($input.notes != null) {
-        value = $input.notes
+        var.update $notas { value = $input.notes }
       }
     }
 
@@ -154,31 +169,30 @@ query alerts/status verb=POST {
         var.update $novo_resolved_at { value = "now" }
         var.update $nova_resolution { value = "manual" }
       }
-      // Condição já normalizada no momento da resolução manual
+    }
+
+    conditional {
       if (($input.status == "Resolvido") && $condicao_normalizada) {
         var.update $novo_condition_cleared { value = "now" }
       }
     }
 
-    var $atualizacao {
-      value = {}
-        |set:"status":$input.status
-        |set:"status_updated_at":"now"
-        |set:"updated_by":$input.user_id
-        |set:"notes":$notas
-        |set:"resolved_at":$novo_resolved_at
-        |set:"resolution":$nova_resolution
-        |set:"condition_cleared_at":$novo_condition_cleared
-    }
-
     db.edit stock_alert {
       field_name = "id"
       field_value = $input.alert_id
-      data = $atualizacao
+      data = {
+        status: $input.status
+        status_updated_at: "now"
+        updated_by: $input.user_id
+        notes: $notas
+        resolved_at: $novo_resolved_at
+        resolution: $nova_resolution
+        condition_cleared_at: $novo_condition_cleared
+      }
     } as $alerta_atualizado
-
-    response = $alerta_atualizado
-    tags = ["smart-vision"]
-    guid = "alerts_status_guid_001"
   }
+
+  response = $alerta_atualizado
+  tags = ["smart-vision"]
+  guid = "alerts_status_guid_001"
 }

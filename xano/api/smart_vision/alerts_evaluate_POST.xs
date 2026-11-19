@@ -4,7 +4,7 @@
 // quando normaliza e respeita resolução manual (silenciamento). Não altera saldo nem
 // gera movimentação — alertas derivam de product.current_stock e stock_movement.
 // Permissões: Gestor, Estoquista ou admin (legado). Retorna contadores da execução.
-query alerts/evaluate verb=POST {
+query "alerts/evaluate" verb=POST {
   api_group = "Smart Vision"
 
   input {
@@ -24,7 +24,7 @@ query alerts/evaluate verb=POST {
     }
 
     precondition ($actor.role == "Gestor" || $actor.role == "Estoquista" || $actor.role == "admin") {
-      error_type = "forbidden"
+      error_type = "accessdenied"
       error = "Apenas gestores e estoquistas podem executar a avaliação de alertas."
     }
 
@@ -61,63 +61,77 @@ query alerts/evaluate verb=POST {
 
     conditional {
       if ($produtos != null) {
-        foreach $p in $produtos {
-          var.update $avaliados { value = $avaliados|add:1 }
+        foreach ($produtos) {
+          each as $p {
+            var.update $avaliados { value = $avaliados|add:1 }
 
-          function.run "Smart Vision/avaliar_alerta" {
-            input = {
-              product_id: $p.id
-              alert_type: "LOW_STOCK"
-              actor_id  : $input.user_id
+            function.run "Smart Vision/avaliar_alerta" {
+              input = {
+                product_id: $p.id
+                alert_type: "LOW_STOCK"
+                actor_id  : $input.user_id
+              }
+            } as $resultado_low
+
+            function.run "Smart Vision/avaliar_alerta" {
+              input = {
+                product_id: $p.id
+                alert_type: "INACTIVE"
+                actor_id  : $input.user_id
+              }
+            } as $resultado_inactive
+
+            conditional {
+              if ($resultado_low.acao == "criado") {
+                var.update $criados { value = $criados|add:1 }
+                var.update $criados_low_stock { value = $criados_low_stock|add:1 }
+              }
             }
-          } as $resultado_low
 
-          function.run "Smart Vision/avaliar_alerta" {
-            input = {
-              product_id: $p.id
-              alert_type: "INACTIVE"
-              actor_id  : $input.user_id
+            conditional {
+              if ($resultado_low.acao == "resolvido") {
+                var.update $resolvidos { value = $resolvidos|add:1 }
+              }
             }
-          } as $resultado_inactive
 
-          if ($resultado_low.acao == "criado") {
-            var.update $criados { value = $criados|add:1 }
-            var.update $criados_low_stock { value = $criados_low_stock|add:1 }
-          }
+            conditional {
+              if ($resultado_low.acao == "silenciado") {
+                var.update $silenciados { value = $silenciados|add:1 }
+              }
+            }
 
-          if ($resultado_low.acao == "resolvido") {
-            var.update $resolvidos { value = $resolvidos|add:1 }
-          }
+            conditional {
+              if ($resultado_inactive.acao == "criado") {
+                var.update $criados { value = $criados|add:1 }
+                var.update $criados_inactive { value = $criados_inactive|add:1 }
+              }
+            }
 
-          if ($resultado_low.acao == "silenciado") {
-            var.update $silenciados { value = $silenciados|add:1 }
-          }
+            conditional {
+              if ($resultado_inactive.acao == "resolvido") {
+                var.update $resolvidos { value = $resolvidos|add:1 }
+              }
+            }
 
-          if ($resultado_inactive.acao == "criado") {
-            var.update $criados { value = $criados|add:1 }
-            var.update $criados_inactive { value = $criados_inactive|add:1 }
-          }
-
-          if ($resultado_inactive.acao == "resolvido") {
-            var.update $resolvidos { value = $resolvidos|add:1 }
-          }
-
-          if ($resultado_inactive.acao == "silenciado") {
-            var.update $silenciados { value = $silenciados|add:1 }
+            conditional {
+              if ($resultado_inactive.acao == "silenciado") {
+                var.update $silenciados { value = $silenciados|add:1 }
+              }
+            }
           }
         }
       }
     }
-
-    response = {}
-      |set:"avaliados":$avaliados
-      |set:"criados":$criados
-      |set:"resolvidos":$resolvidos
-      |set:"silenciados":$silenciados
-      |set:"criados_low_stock":$criados_low_stock
-      |set:"criados_inactive":$criados_inactive
-      |set:"executed_by":$input.user_id
-    tags = ["smart-vision"]
-    guid = "alerts_evaluate_guid_001"
   }
+
+  response = {}
+    |set:"avaliados":$avaliados
+    |set:"criados":$criados
+    |set:"resolvidos":$resolvidos
+    |set:"silenciados":$silenciados
+    |set:"criados_low_stock":$criados_low_stock
+    |set:"criados_inactive":$criados_inactive
+    |set:"executed_by":$input.user_id
+  tags = ["smart-vision"]
+  guid = "alerts_evaluate_guid_001"
 }
